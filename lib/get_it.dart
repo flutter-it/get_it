@@ -14,12 +14,12 @@ part 'get_it_impl.dart';
 /// You will see a rather esoteric looking test `(const Object() is! T)` at several places.
 /// It tests if [T] is a real type and not Object or dynamic.
 
-/// For each registered factory/singleton a [_ServiceFactory<T>] is created
+/// For each registered factory/singleton an [ObjectRegistration<T>] is created
 /// it holds either the instance of a Singleton or/and the creation functions
 /// for creating an instance when [get] is called
 ///
 /// There are three different types:
-enum ServiceFactoryType {
+enum ObjectRegistrationType {
   alwaysNew, // factory which means on every call of [get] a new instance is created
   constant, // normal singleton
   lazy, // lazy
@@ -124,8 +124,8 @@ class WaitingTimeOutException implements Exception {
   }
 }
 
-abstract class ServiceFactory<T extends Object> {
-  ServiceFactoryType get factoryType;
+abstract class ObjectRegistration<T extends Object> {
+  ObjectRegistrationType get registrationType;
 
   /// In case of a named registration the instance name is here stored for easy access
   String? get instanceName;
@@ -138,13 +138,13 @@ abstract class ServiceFactory<T extends Object> {
   Object? get instance;
 
   /// the type that was used when registering, used for runtime checks
-  Type get registrationType;
+  Type get registeredWithType;
 
   bool get isReady;
 
   bool get isNamedRegistration => instanceName != null;
 
-  String get debugName => '$instanceName : $registrationType';
+  String get debugName => '$instanceName : $registeredWithType';
 
   bool get canBeWaitedFor;
 }
@@ -491,8 +491,8 @@ abstract class GetIt {
     bool useWeakReference = false,
   });
 
-  /// find the first factory that matches the type [T]/[instanceName] or the [instance]
-  ServiceFactory? findFirstFactory<T extends Object>(
+  /// find the first registration that matches the type [T]/[instanceName] or the [instance]
+  ObjectRegistration? findFirstObjectRegistration<T extends Object>(
       {Object? instance, String? instanceName});
 
   /// Tests if an [instance] of an object or a Type ([T] or [type]) or a name [instanceName]

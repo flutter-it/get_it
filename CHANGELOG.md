@@ -1,3 +1,7 @@
+## [8.2.0]
+
+Thanks to PR by @Hu-Wentao we now expose part of the internal state of get_it so tool authors have more options. While doing so internal renaming has happened, so where previously where the term "ServiceFactory" was uses we not use consistently `ObjectRegistration` and instead of variables with `factory` in the name we use `registration` this has not impact on the public API so it is not a breaking change.
+
 ## [8.1.0]
 
 * adding documentation https://github.com/flutter-it/get_it/issues/411
