@@ -492,8 +492,10 @@ abstract class GetIt {
   });
 
   /// find the first registration that matches the type [T]/[instanceName] or the [instance]
-  ObjectRegistration? findFirstObjectRegistration<T extends Object>(
-      {Object? instance, String? instanceName});
+  ObjectRegistration? findFirstObjectRegistration<T extends Object>({
+    Object? instance,
+    String? instanceName,
+  });
 
   /// Tests if an [instance] of an object or a Type ([T] or [type]) or a name [instanceName]
   /// is registered inside GetIt
