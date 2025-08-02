@@ -26,24 +26,10 @@ void _debugOutput(Object message) {
   }
 }
 
-/// You will see a rather esoteric looking test `(const Object() is! T)` at several places.
-/// It tests if [T] is a real type and not Object or dynamic.
-
-/// For each registered factory/singleton a [_ServiceFactory<T>] is created
-/// it holds either the instance of a Singleton or/and the creation functions
-/// for creating an instance when [get] is called
-///
-/// There are three different types:
-enum _ServiceFactoryType {
-  alwaysNew, // factory which means on every call of [get] a new instance is created
-  constant, // normal singleton
-  lazy, // lazy
-  cachedFactory, // cached factory
-}
-
 /// If I use `Singleton` without specifier in the comments I mean normal and lazy
-class _ServiceFactory<T extends Object, P1, P2> {
-  final _ServiceFactoryType factoryType;
+class _ServiceFactory<T extends Object, P1, P2> extends ServiceFactory<T> {
+  @override
+  final ServiceFactoryType factoryType;
 
   final _GetItImplementation _getItInstance;
   final _TypeRegistration registeredIn;
@@ -66,9 +52,11 @@ class _ServiceFactory<T extends Object, P1, P2> {
   final DisposingFunc<T>? disposeFunction;
 
   /// In case of a named registration the instance name is here stored for easy access
+  @override
   String? instanceName;
 
   /// true if one of the async registration functions have been used
+  @override
   final bool isAsync;
 
   /// If an existing Object gets registered or an async/lazy Singleton has finished
@@ -77,6 +65,7 @@ class _ServiceFactory<T extends Object, P1, P2> {
   WeakReference<T>? weakReferenceInstance;
   final bool useWeakReference;
 
+  @override
   T? get instance =>
       weakReferenceInstance != null && weakReferenceInstance!.target != null
           ? weakReferenceInstance!.target
@@ -91,6 +80,7 @@ class _ServiceFactory<T extends Object, P1, P2> {
   }
 
   /// the type that was used when registering, used for runtime checks
+  @override
   late final Type registrationType;
 
   /// to enable Singletons to signal that they are ready (their initialization is finished)
@@ -103,12 +93,16 @@ class _ServiceFactory<T extends Object, P1, P2> {
   /// they are stored here
   final List<Type> objectsWaiting = [];
 
+  @override
   bool get isReady => _readyCompleter.isCompleted;
 
+  @override
   bool get isNamedRegistration => instanceName != null;
 
+  @override
   String get debugName => '$instanceName : $registrationType';
 
+  @override
   bool get canBeWaitedFor =>
       shouldSignalReady || pendingResult != null || isAsync;
 
@@ -173,8 +167,8 @@ class _ServiceFactory<T extends Object, P1, P2> {
   T getObject(dynamic param1, dynamic param2) {
     assert(
       !(![
-            _ServiceFactoryType.alwaysNew,
-            _ServiceFactoryType.cachedFactory,
+            ServiceFactoryType.alwaysNew,
+            ServiceFactoryType.cachedFactory,
           ].contains(factoryType) &&
           (param1 != null || param2 != null)),
       'You can only pass parameters to factories!',
@@ -182,7 +176,7 @@ class _ServiceFactory<T extends Object, P1, P2> {
 
     try {
       switch (factoryType) {
-        case _ServiceFactoryType.alwaysNew:
+        case ServiceFactoryType.alwaysNew:
           if (creationFunctionParam != null) {
             // param1.runtimeType == param1Type should use 'is' but Dart does
             // not support this comparison. For the time being it is therefore
@@ -199,7 +193,7 @@ class _ServiceFactory<T extends Object, P1, P2> {
           } else {
             return creationFunction!();
           }
-        case _ServiceFactoryType.cachedFactory:
+        case ServiceFactoryType.cachedFactory:
           if (weakReferenceInstance?.target != null &&
               param1 == lastParam1 &&
               param2 == lastParam2) {
@@ -216,9 +210,9 @@ class _ServiceFactory<T extends Object, P1, P2> {
             weakReferenceInstance = WeakReference(newInstance);
             return newInstance;
           }
-        case _ServiceFactoryType.constant:
+        case ServiceFactoryType.constant:
           return instance!;
-        case _ServiceFactoryType.lazy:
+        case ServiceFactoryType.lazy:
           if (instance == null) {
             if (useWeakReference) {
               if (weakReferenceInstance != null) {
@@ -261,8 +255,8 @@ class _ServiceFactory<T extends Object, P1, P2> {
   Future<R> getObjectAsync<R>(dynamic param1, dynamic param2) async {
     assert(
       !(![
-            _ServiceFactoryType.alwaysNew,
-            _ServiceFactoryType.cachedFactory,
+            ServiceFactoryType.alwaysNew,
+            ServiceFactoryType.cachedFactory,
           ].contains(factoryType) &&
           (param1 != null || param2 != null)),
       'You can only pass parameters to factories!',
@@ -277,7 +271,7 @@ class _ServiceFactory<T extends Object, P1, P2> {
     );
     try {
       switch (factoryType) {
-        case _ServiceFactoryType.alwaysNew:
+        case ServiceFactoryType.alwaysNew:
           if (asyncCreationFunctionParam != null) {
             // param1.runtimeType == param1Type should use 'is' but Dart does
             // not support this comparison. For the time being it is therefore
@@ -295,7 +289,7 @@ class _ServiceFactory<T extends Object, P1, P2> {
           } else {
             return asyncCreationFunction!() as Future<R>;
           }
-        case _ServiceFactoryType.cachedFactory:
+        case ServiceFactoryType.cachedFactory:
           if (weakReferenceInstance?.target != null &&
               param1 == lastParam1 &&
               param2 == lastParam2) {
@@ -318,14 +312,14 @@ class _ServiceFactory<T extends Object, P1, P2> {
               }) as Future<R>;
             }
           }
-        case _ServiceFactoryType.constant:
+        case ServiceFactoryType.constant:
           if (instance != null) {
             return Future<R>.value(instance as R);
           } else {
             assert(pendingResult != null);
             return pendingResult! as Future<R>;
           }
-        case _ServiceFactoryType.lazy:
+        case ServiceFactoryType.lazy:
           if (instance != null) {
             // We already have a finished instance
             return Future<R>.value(instance as R);
@@ -452,8 +446,8 @@ class _Scope {
       if (instanceFactory.isAsync || instanceFactory.pendingResult != null) {
         /// We use an assert here instead of an `if..throw` for performance reasons
         assert(
-          instanceFactory.factoryType == _ServiceFactoryType.constant ||
-              instanceFactory.factoryType == _ServiceFactoryType.lazy,
+          instanceFactory.factoryType == ServiceFactoryType.constant ||
+              instanceFactory.factoryType == ServiceFactoryType.lazy,
           "You can't use getAll with an async Factory of $T.",
         );
         throwIfNot(
@@ -653,8 +647,8 @@ class _GetItImplementation implements GetIt {
     if (instanceFactory.isAsync || instanceFactory.pendingResult != null) {
       /// We use an assert here instead of an `if..throw` for performance reasons
       assert(
-        instanceFactory.factoryType == _ServiceFactoryType.constant ||
-            instanceFactory.factoryType == _ServiceFactoryType.lazy,
+        instanceFactory.factoryType == ServiceFactoryType.constant ||
+            instanceFactory.factoryType == ServiceFactoryType.lazy,
         "You can't use get with an async Factory of ${instanceName ?? T.toString()}.",
       );
       throwIfNot(
@@ -783,7 +777,7 @@ class _GetItImplementation implements GetIt {
     String? instanceName,
   }) {
     _register<T, void, void>(
-      type: _ServiceFactoryType.alwaysNew,
+      type: ServiceFactoryType.alwaysNew,
       instanceName: instanceName,
       factoryFunc: factoryFunc,
       isAsync: false,
@@ -797,7 +791,7 @@ class _GetItImplementation implements GetIt {
     String? instanceName,
   }) {
     _register<T, void, void>(
-      type: _ServiceFactoryType.cachedFactory,
+      type: ServiceFactoryType.cachedFactory,
       instanceName: instanceName,
       factoryFunc: factoryFunc,
       isAsync: false,
@@ -812,7 +806,7 @@ class _GetItImplementation implements GetIt {
     String? instanceName,
   }) {
     _register<T, P1, P2>(
-      type: _ServiceFactoryType.cachedFactory,
+      type: ServiceFactoryType.cachedFactory,
       instanceName: instanceName,
       factoryFuncParam: factoryFunc,
       isAsync: false,
@@ -826,7 +820,7 @@ class _GetItImplementation implements GetIt {
       FactoryFuncAsync<T> factoryFunc,
       {String? instanceName}) {
     _register<T, void, void>(
-      type: _ServiceFactoryType.cachedFactory,
+      type: ServiceFactoryType.cachedFactory,
       instanceName: instanceName,
       factoryFuncAsync: factoryFunc,
       isAsync: true,
@@ -841,7 +835,7 @@ class _GetItImplementation implements GetIt {
     String? instanceName,
   }) {
     _register<T, P1, P2>(
-      type: _ServiceFactoryType.cachedFactory,
+      type: ServiceFactoryType.cachedFactory,
       instanceName: instanceName,
       factoryFuncParamAsync: factoryFunc,
       isAsync: true,
@@ -875,7 +869,7 @@ class _GetItImplementation implements GetIt {
     String? instanceName,
   }) {
     _register<T, P1, P2>(
-      type: _ServiceFactoryType.alwaysNew,
+      type: ServiceFactoryType.alwaysNew,
       instanceName: instanceName,
       factoryFuncParam: factoryFunc,
       isAsync: false,
@@ -891,7 +885,7 @@ class _GetItImplementation implements GetIt {
     String? instanceName,
   }) {
     _register<T, void, void>(
-      type: _ServiceFactoryType.alwaysNew,
+      type: ServiceFactoryType.alwaysNew,
       instanceName: instanceName,
       factoryFuncAsync: factoryFunc,
       isAsync: true,
@@ -925,7 +919,7 @@ class _GetItImplementation implements GetIt {
     String? instanceName,
   }) {
     _register<T, P1, P2>(
-      type: _ServiceFactoryType.alwaysNew,
+      type: ServiceFactoryType.alwaysNew,
       instanceName: instanceName,
       factoryFuncParamAsync: factoryFunc,
       isAsync: true,
@@ -950,7 +944,7 @@ class _GetItImplementation implements GetIt {
     bool useWeakReference = false,
   }) {
     _register<T, void, void>(
-      type: _ServiceFactoryType.lazy,
+      type: ServiceFactoryType.lazy,
       instanceName: instanceName,
       factoryFunc: factoryFunc,
       isAsync: false,
@@ -976,7 +970,7 @@ class _GetItImplementation implements GetIt {
     DisposingFunc<T>? dispose,
   }) {
     _register<T, void, void>(
-      type: _ServiceFactoryType.constant,
+      type: ServiceFactoryType.constant,
       instanceName: instanceName,
       instance: instance,
       isAsync: false,
@@ -1005,7 +999,7 @@ class _GetItImplementation implements GetIt {
     );
     if (existingFactory != null) {
       throwIfNot(
-        existingFactory.factoryType == _ServiceFactoryType.constant &&
+        existingFactory.factoryType == ServiceFactoryType.constant &&
             !existingFactory.isAsync,
         StateError(
           'registerSingletonIfAbsent can only be called for a type that is already registered as Singleton and not for factories or async/lazy Singletons',
@@ -1017,7 +1011,7 @@ class _GetItImplementation implements GetIt {
 
     final instance = factoryFunc();
     _register<T, void, void>(
-      type: _ServiceFactoryType.constant,
+      type: ServiceFactoryType.constant,
       instance: instance,
       instanceName: instanceName,
       isAsync: false,
@@ -1067,7 +1061,7 @@ class _GetItImplementation implements GetIt {
     DisposingFunc<T>? dispose,
   }) {
     _register<T, void, void>(
-      type: _ServiceFactoryType.constant,
+      type: ServiceFactoryType.constant,
       instanceName: instanceName,
       isAsync: false,
       factoryFunc: factoryFunc,
@@ -1103,7 +1097,7 @@ class _GetItImplementation implements GetIt {
     DisposingFunc<T>? dispose,
   }) {
     _register<T, void, void>(
-      type: _ServiceFactoryType.constant,
+      type: ServiceFactoryType.constant,
       instanceName: instanceName,
       isAsync: true,
       factoryFuncAsync: factoryFunc,
@@ -1137,13 +1131,23 @@ class _GetItImplementation implements GetIt {
   }) {
     _register<T, void, void>(
       isAsync: true,
-      type: _ServiceFactoryType.lazy,
+      type: ServiceFactoryType.lazy,
       instanceName: instanceName,
       factoryFuncAsync: factoryFunc,
       shouldSignalReady: false,
       disposeFunc: dispose,
       useWeakReference: useWeakReference,
     );
+  }
+
+  @override
+  ServiceFactory? findFirstFactory<T extends Object>(
+      {Object? instance, String? instanceName}) {
+    if (instance != null) {
+      return _findFirstFactoryByInstanceOrNull(instance);
+    } else {
+      return _findFirstFactoryByNameAndTypeOrNull<T>(instanceName);
+    }
   }
 
   /// Tests if an [instance] of an object or aType [T] or a name [instanceName]
@@ -1290,7 +1294,7 @@ class _GetItImplementation implements GetIt {
       instanceFactory = _findFactoryByNameAndType<T>(instanceName);
     }
     throwIfNot(
-      instanceFactory.factoryType == _ServiceFactoryType.lazy,
+      instanceFactory.factoryType == ServiceFactoryType.lazy,
       StateError(
         'There is no type ${instance.runtimeType} registered as LazySingleton in GetIt',
       ),
@@ -1319,7 +1323,7 @@ class _GetItImplementation implements GetIt {
   }) {
     final instanceFactory = _findFactoryByNameAndType<T>(instanceName);
     throwIfNot(
-      instanceFactory.factoryType == _ServiceFactoryType.lazy,
+      instanceFactory.factoryType == ServiceFactoryType.lazy,
       StateError(
         'There is no type $T  with name $instanceName registered as LazySingleton in GetIt',
       ),
@@ -1612,7 +1616,7 @@ class _GetItImplementation implements GetIt {
   String? get currentScopeName => _currentScope.name;
 
   void _register<T extends Object, P1, P2>({
-    required _ServiceFactoryType type,
+    required ServiceFactoryType type,
     FactoryFunc<T>? factoryFunc,
     FactoryFuncParam<T, P1, P2>? factoryFuncParam,
     FactoryFuncAsync<T>? factoryFuncAsync,
@@ -1731,7 +1735,7 @@ class _GetItImplementation implements GetIt {
     }
 
     // simple Singletons get are already created, nothing else has to be done
-    if (type == _ServiceFactoryType.constant &&
+    if (type == ServiceFactoryType.constant &&
         !shouldSignalReady &&
         !isAsync &&
         (dependsOn?.isEmpty ?? true)) {
@@ -1741,7 +1745,7 @@ class _GetItImplementation implements GetIt {
     // if it's an async or a dependent Singleton we start its creation function here after we check if
     // it is dependent on other registered Singletons.
     if ((isAsync || (dependsOn?.isNotEmpty ?? false)) &&
-        type == _ServiceFactoryType.constant) {
+        type == ServiceFactoryType.constant) {
       /// Any client awaiting the completion of this Singleton
       /// Has to wait for the completion of the Singleton itself as well
       /// as for the completion of all the Singletons this one depends on
@@ -2088,7 +2092,7 @@ class _GetItImplementation implements GetIt {
       factoryToCheck.objectsWaiting.add(callee.runtimeType);
     }
     if (factoryToCheck.isAsync &&
-        factoryToCheck.factoryType == _ServiceFactoryType.lazy &&
+        factoryToCheck.factoryType == ServiceFactoryType.lazy &&
         factoryToCheck.instance == null) {
       if (timeout != null) {
         return factoryToCheck.getObjectAsync(null, null).timeout(
@@ -2135,7 +2139,7 @@ class _GetItImplementation implements GetIt {
     }
     throwIfNot(
       factoryToCheck.canBeWaitedFor &&
-          factoryToCheck.factoryType != _ServiceFactoryType.alwaysNew,
+          factoryToCheck.factoryType != ServiceFactoryType.alwaysNew,
       ArgumentError(
         'You only can use this function on async Singletons or Singletons '
         'that have ben marked with "signalsReady" or that they depend on others',
