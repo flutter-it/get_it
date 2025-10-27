@@ -708,6 +708,20 @@ class _GetItImplementation implements GetIt {
     return instances;
   }
 
+  @override
+  List<T> findAll<T extends Object>() {
+    final List<T> instances = <T>[];
+    
+    for (final registration in _allRegistrations) {
+      final instance = registration.instance;
+      if (instance != null && instance is T) {
+        instances.add(instance);
+      }
+    }
+    
+    return instances;
+  }
+
   /// Callable class so that you can write `GetIt.instance<MyType>` instead of
   /// `GetIt.instance.get<MyType>`
   @override

@@ -242,6 +242,11 @@ abstract class GetIt {
     bool fromAllScopes = false,
   });
 
+  /// Returns a list of all registered instances that implement or extend type [T], regardless of how they were registered.
+  /// This uses runtime type checking (`instance is T`) to find matching instances.
+  /// This is different from [getAll] which only returns instances that were registered AS type [T].
+  List<T> findAll<T extends Object>();
+
   /// The returned `Future<Iterable>` will then contain all registered async registrations of the requested interface [T] with or without an instance name.
   /// if the registrations are factories they will each be called with the provided parameters [param1,param2] and
   /// the results will be returned in the Iterable.
