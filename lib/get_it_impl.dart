@@ -52,6 +52,9 @@ class _ObjectRegistration<T extends Object, P1, P2>
   ///  Dispose function that is used when a scope is popped
   final DisposingFunc<T>? disposeFunction;
 
+  /// Optional callback that is called after the instance has been created
+  final void Function(T)? onCreatedCallback;
+
   /// In case of a named registration the instance name is here stored for easy access
   @override
   String? instanceName;
@@ -126,6 +129,7 @@ class _ObjectRegistration<T extends Object, P1, P2>
     required this.registrationScope,
     required this.registeredIn,
     this.disposeFunction,
+    this.onCreatedCallback,
   })  : _instance = instance,
         assert(
           !(disposeFunction != null &&
@@ -238,6 +242,9 @@ class _ObjectRegistration<T extends Object, P1, P2>
             }
             objectsWaiting.clear();
             _readyCompleter.complete();
+
+            // Call onCreated callback if provided
+            onCreatedCallback?.call(instance!);
 
             /// check if we are shadowing an existing Object
             final registrationThatWouldbeShadowed =
@@ -358,6 +365,9 @@ class _ObjectRegistration<T extends Object, P1, P2>
               } else {
                 _instance = newInstance;
               }
+
+              // Call onCreated callback if provided
+              onCreatedCallback?.call(newInstance);
 
               /// check if we are shadowing an existing Object
               final registrationThatWouldbeShadowed =
@@ -1086,6 +1096,7 @@ class _GetItImplementation implements GetIt {
     FactoryFunc<T> factoryFunc, {
     String? instanceName,
     DisposingFunc<T>? dispose,
+    void Function(T instance)? onCreated,
     bool useWeakReference = false,
   }) {
     _register<T, void, void>(
@@ -1095,6 +1106,7 @@ class _GetItImplementation implements GetIt {
       isAsync: false,
       shouldSignalReady: false,
       disposeFunc: dispose,
+      onCreatedFunc: onCreated,
       useWeakReference: useWeakReference,
     );
   }
@@ -1241,6 +1253,7 @@ class _GetItImplementation implements GetIt {
     Iterable<Type>? dependsOn,
     bool? signalsReady,
     DisposingFunc<T>? dispose,
+    void Function(T instance)? onCreated,
   }) {
     _register<T, void, void>(
       type: ObjectRegistrationType.constant,
@@ -1250,6 +1263,7 @@ class _GetItImplementation implements GetIt {
       dependsOn: dependsOn,
       shouldSignalReady: signalsReady ?? <T>[] is List<WillSignalReady>,
       disposeFunc: dispose,
+      onCreatedFunc: onCreated,
     );
   }
 
@@ -1273,6 +1287,7 @@ class _GetItImplementation implements GetIt {
     FactoryFuncAsync<T> factoryFunc, {
     String? instanceName,
     DisposingFunc<T>? dispose,
+    void Function(T instance)? onCreated,
     bool useWeakReference = false,
   }) {
     _register<T, void, void>(
@@ -1282,6 +1297,7 @@ class _GetItImplementation implements GetIt {
       factoryFuncAsync: factoryFunc,
       shouldSignalReady: false,
       disposeFunc: dispose,
+      onCreatedFunc: onCreated,
       useWeakReference: useWeakReference,
     );
   }
@@ -1826,6 +1842,7 @@ class _GetItImplementation implements GetIt {
     Iterable<Type>? dependsOn,
     required bool shouldSignalReady,
     DisposingFunc<T>? disposeFunc,
+    void Function(T)? onCreatedFunc,
     bool useWeakReference = false,
   }) {
     throwIfNot(
@@ -1920,6 +1937,7 @@ class _GetItImplementation implements GetIt {
       instanceName: instanceName,
       shouldSignalReady: shouldSignalReady,
       disposeFunction: disposeFunc,
+      onCreatedCallback: onCreatedFunc,
       useWeakReference: useWeakReference,
     );
 
@@ -2029,6 +2047,9 @@ class _GetItImplementation implements GetIt {
                 .onGetShadowed(objectRegistration.instance!);
           }
 
+          // Call onCreated callback if provided
+          objectRegistration.onCreatedCallback?.call(objectRegistration.instance!);
+
           if (!objectRegistration.shouldSignalReady) {
             /// As this isn't an async function we declare it as ready here
             /// if wasn't marked that it will signalReady
@@ -2060,6 +2081,9 @@ class _GetItImplementation implements GetIt {
                 objectThatWouldbeShadowed is ShadowChangeHandlers) {
               objectThatWouldbeShadowed.onGetShadowed(instance);
             }
+
+            // Call onCreated callback if provided
+            objectRegistration.onCreatedCallback?.call(instance);
 
             if (!objectRegistration.shouldSignalReady &&
                 !objectRegistration.isReady) {

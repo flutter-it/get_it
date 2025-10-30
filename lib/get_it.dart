@@ -535,6 +535,7 @@ abstract class GetIt {
     Iterable<Type>? dependsOn,
     bool? signalsReady,
     DisposingFunc<T>? dispose,
+    void Function(T instance)? onCreated,
   });
 
   /// registers a type as Singleton by passing a factory function that will be called
@@ -544,12 +545,17 @@ abstract class GetIt {
   /// [instanceName] if you provide a value here your factory gets registered with that
   /// name instead of a type. This should only be necessary if you need to register more
   /// than one instance of one type.
+  /// [onCreated] optional callback that will be called after the instance has been created
+  /// (when first accessed). This can be useful for logging, analytics, or post-creation setup.
+  /// If this callback throws an error, it will be caught and logged but won't prevent
+  /// the instance from being created.
   /// [registerLazySingleton] does not influence [allReady] however you can wait
   /// for and be dependent on a LazySingleton.
   void registerLazySingleton<T extends Object>(
     FactoryFunc<T> factoryFunc, {
     String? instanceName,
     DisposingFunc<T>? dispose,
+    void Function(T instance)? onCreated,
     bool useWeakReference = false,
   });
 
@@ -566,12 +572,17 @@ abstract class GetIt {
   /// [instanceName] if you provide a value here your instance gets registered with that
   /// name instead of a type. This should only be necessary if you need to register more
   /// than one instance of one type.
+  /// [onCreated] optional callback that will be called after the instance has been created
+  /// (when first accessed). This can be useful for logging, analytics, or post-creation setup.
+  /// If this callback throws an error, it will be caught and logged but won't prevent
+  /// the instance from being created.
   /// [registerLazySingletonAsync] does not influence [allReady] however you can wait
   /// for and be dependent on a LazySingleton.
   void registerLazySingletonAsync<T extends Object>(
     FactoryFuncAsync<T> factoryFunc, {
     String? instanceName,
     DisposingFunc<T>? dispose,
+    void Function(T instance)? onCreated,
     bool useWeakReference = false,
   });
 

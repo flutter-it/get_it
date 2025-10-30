@@ -1,3 +1,5 @@
+// ignore_for_file: unreachable_from_main
+
 import 'package:test/test.dart';
 
 // Test interfaces and classes
@@ -12,6 +14,7 @@ abstract interface class IDisposable {
 class FileOutput implements IOutput {
   @override
   void write(String message) {
+    // ignore: avoid_print
     print('File: $message');
   }
 }
@@ -19,17 +22,20 @@ class FileOutput implements IOutput {
 class ConsoleOutput implements IOutput, IDisposable {
   @override
   void write(String message) {
+    // ignore: avoid_print
     print('Console: $message');
   }
 
   @override
   void dispose() {
+    // ignore: avoid_print
     print('Disposing console');
   }
 }
 
 class DatabaseService {
   void save(String data) {
+    // ignore: avoid_print
     print('Saving: $data');
   }
 }
@@ -37,6 +43,7 @@ class DatabaseService {
 class EnhancedFileOutput extends FileOutput implements IDisposable {
   @override
   void dispose() {
+    // ignore: avoid_print
     print('Disposing file');
   }
 }

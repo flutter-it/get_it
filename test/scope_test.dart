@@ -898,8 +898,10 @@ void main() {
 
       // Push new scope and register another lazy singleton
       GetIt.I.pushNewScope();
-      GetIt.I.registerLazySingleton<TestClass>(() => TestClass('scope'),
-          instanceName: 'scope');
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('scope'),
+        instanceName: 'scope',
+      );
       final scopeInstance = GetIt.I<TestClass>(instanceName: 'scope');
       expect(constructorCounter, 2);
 
@@ -944,8 +946,10 @@ void main() {
       GetIt.I.registerSingleton<TestClass>(regularSingleton);
 
       // Register lazy singleton
-      GetIt.I.registerLazySingleton<TestClass>(() => TestClass('lazy'),
-          instanceName: 'lazy');
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('lazy'),
+        instanceName: 'lazy',
+      );
       final lazyInstance = GetIt.I<TestClass>(instanceName: 'lazy');
 
       final constructorCountBeforeReset = constructorCounter;

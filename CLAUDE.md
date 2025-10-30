@@ -286,3 +286,4 @@ See CHANGELOG.md for detailed version history and breaking changes.
 - README.md - Comprehensive usage documentation
 - https://flutter-it.dev - Official documentation site
 - https://www.burkharts.net/apps/blog/one-to-find-them-all-how-to-use-service-locators-with-flutter/ - Detailed blog post
+- don't commit without first run dart analyse to make sure no warnings exist

@@ -1,3 +1,5 @@
+// ignore_for_file: unreachable_from_main
+
 import 'package:test/test.dart';
 
 abstract interface class IOutput {
@@ -64,7 +66,6 @@ void main() {
 
     test('Practical scenario for get_it', () {
       // User registers: getIt.registerSingleton<FileOutput>(FileOutput())
-      final registeredType = FileOutput;
 
       // Checking if registered AS IOutput (should be false)
       expect(isSameType<FileOutput, IOutput>(), false);
@@ -72,11 +73,16 @@ void main() {
       // Checking if it CAN BE retrieved as IOutput (should be true)
       expect(isSubtype<FileOutput, IOutput>(), true);
 
+      // ignore: avoid_print
       print('Registered as: FileOutput');
+      // ignore: avoid_print
       print(
-          'Is registered AS IOutput? ${isSameType<FileOutput, IOutput>()}'); // false
+        'Is registered AS IOutput? ${isSameType<FileOutput, IOutput>()}',
+      ); // false
+      // ignore: avoid_print
       print(
-          'Can be retrieved as IOutput? ${isSubtype<FileOutput, IOutput>()}'); // true
+        'Can be retrieved as IOutput? ${isSubtype<FileOutput, IOutput>()}',
+      ); // true
     });
 
     test('getAll vs findAll distinction', () {
@@ -87,7 +93,9 @@ void main() {
 
       // getAll<IOutput>() - needs exact match
       expect(
-          isSameType<FileOutput, IOutput>(), false); // ❌ Should NOT return it
+        isSameType<FileOutput, IOutput>(),
+        false,
+      ); // ❌ Should NOT return it
 
       // findAll<FileOutput>() - accepts subtypes
       expect(isSubtype<FileOutput, FileOutput>(), true); // ✅ Should return it
@@ -100,7 +108,9 @@ void main() {
       // Child class
       expect(isSameType<EnhancedFileOutput, FileOutput>(), false); // Not same
       expect(
-          isSubtype<EnhancedFileOutput, FileOutput>(), true); // But is subtype
+        isSubtype<EnhancedFileOutput, FileOutput>(),
+        true,
+      ); // But is subtype
 
       // Object
       expect(isSameType<FileOutput, Object>(), false); // Not same

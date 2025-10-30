@@ -1,3 +1,5 @@
+// ignore_for_file: unreachable_from_main
+
 import 'package:get_it/get_it.dart';
 import 'package:test/test.dart';
 
@@ -57,7 +59,6 @@ void main() {
 
       final outputs = GetIt.I.findAll<IOutput>(
         includeMatchedByRegistrationType: false,
-        includeMatchedByInstance: true,
       );
 
       expect(outputs.length, 2);
@@ -333,7 +334,6 @@ void main() {
       expect(
         () => GetIt.I.findAll<IOutput>(
           includeSubtypes: false,
-          includeMatchedByInstance: true,
         ),
         throwsA(
           isA<ArgumentError>().having(
