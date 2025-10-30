@@ -1,4 +1,5 @@
 [![Flutter Community: get_it](https://fluttercommunity.dev/_github/header/get_it)](https://github.com/fluttercommunity/community)
+[![codecov](https://codecov.io/gh/flutter-it/get_it/branch/master/graph/badge.svg)](https://codecov.io/gh/flutter-it/get_it)
 
 [:heart: Sponsor](https://github.com/sponsors/escamoteur) <a href="https://www.buymeacoffee.com/escamoteur" target="_blank"><img align="right" src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
