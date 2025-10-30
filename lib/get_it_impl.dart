@@ -180,6 +180,43 @@ class _ObjectRegistration<T extends Object, P1, P2>
     return <T>[] is List<S> && <S>[] is List<T>;
   }
 
+  /// Validates that factory parameters are compatible with their expected types.
+  /// Only active in debug mode for zero production overhead.
+  /// Throws ArgumentError with clear message if validation fails.
+  void _validateFactoryParams(dynamic param1, dynamic param2) {
+    if (!_isDebugMode) return;
+
+    // Validate param1
+    if (param1 != null || <P1?>[] is! List<P1>) {
+      // param1 is provided OR P1 is non-nullable (must validate)
+      try {
+        param1 as P1;
+      } catch (e) {
+        throw ArgumentError(
+          "GetIt: Cannot use parameter value of type '${param1.runtimeType}' "
+          "as type '$P1' for factory of type '$T'.\n"
+          "${param1 == null ? 'Param1 is required (non-nullable) but null was passed.\n' : ''}"
+          "Use: getIt<$T>(param1: <your $P1 value>)",
+        );
+      }
+    }
+
+    // Validate param2
+    if (param2 != null || <P2?>[] is! List<P2>) {
+      // param2 is provided OR P2 is non-nullable (must validate)
+      try {
+        param2 as P2;
+      } catch (e) {
+        throw ArgumentError(
+          "GetIt: Cannot use parameter value of type '${param2.runtimeType}' "
+          "as type '$P2' for factory of type '$T'.\n"
+          "${param2 == null ? 'Param2 is required (non-nullable) but null was passed.\n' : ''}"
+          "Use: getIt<$T>(param1: <value>, param2: <your $P2 value>)",
+        );
+      }
+    }
+  }
+
   /// returns an instance depending on the type of the registration if [async==false]
   T getObject(dynamic param1, dynamic param2) {
     assert(
@@ -195,17 +232,8 @@ class _ObjectRegistration<T extends Object, P1, P2>
       switch (registrationType) {
         case ObjectRegistrationType.alwaysNew:
           if (creationFunctionParam != null) {
-            // param1.runtimeType == param1Type should use 'is' but Dart does
-            // not support this comparison. For the time being it is therefore
-            // disabled
-            // assert(
-            //     param1 == null || param1.runtimeType == param1Type,
-            //     'Incompatible Type passed as param1\n'
-            //     'expected: $param1Type actual: ${param1.runtimeType}');
-            // assert(
-            //     param2 == null || param2.runtimeType == param2Type,
-            //     'Incompatible Type passed as param2\n'
-            //     'expected: $param2Type actual: ${param2.runtimeType}');
+            // Validate parameters in debug mode
+            _validateFactoryParams(param1, param2);
             return creationFunctionParam!(param1 as P1, param2 as P2);
           } else {
             return creationFunction!();
@@ -220,6 +248,8 @@ class _ObjectRegistration<T extends Object, P1, P2>
             lastParam2 = param2 as P2?;
             T newInstance;
             if (creationFunctionParam != null) {
+              // Validate parameters in debug mode
+              _validateFactoryParams(param1, param2);
               newInstance = creationFunctionParam!(param1 as P1, param2 as P2);
             } else {
               newInstance = creationFunction!();
@@ -293,17 +323,8 @@ class _ObjectRegistration<T extends Object, P1, P2>
       switch (registrationType) {
         case ObjectRegistrationType.alwaysNew:
           if (asyncCreationFunctionParam != null) {
-            // param1.runtimeType == param1Type should use 'is' but Dart does
-            // not support this comparison. For the time being it is therefore
-            // disabled
-            // assert(
-            //     param1 == null || param1.runtimeType == param1Type,
-            //     'Incompatible Type passed a param1\n'
-            //     'expected: $param1Type actual: ${param1.runtimeType}');
-            // assert(
-            //     param2 == null || param2.runtimeType == param2Type,
-            //     'Incompatible Type passed a param2\n'
-            //     'expected: $param2Type actual: ${param2.runtimeType}');
+            // Validate parameters in debug mode
+            _validateFactoryParams(param1, param2);
             return asyncCreationFunctionParam!(param1 as P1, param2 as P2)
                 as Future<R>;
           } else {
@@ -318,6 +339,8 @@ class _ObjectRegistration<T extends Object, P1, P2>
             if (creationFunctionParam != null) {
               lastParam1 = param1 as P1?;
               lastParam2 = param2 as P2?;
+              // Validate parameters in debug mode
+              _validateFactoryParams(param1, param2);
               return asyncCreationFunctionParam!(
                 param1 as P1,
                 param2 as P2,
@@ -2048,7 +2071,8 @@ class _GetItImplementation implements GetIt {
           }
 
           // Call onCreated callback if provided
-          objectRegistration.onCreatedCallback?.call(objectRegistration.instance!);
+          objectRegistration.onCreatedCallback
+              ?.call(objectRegistration.instance!);
 
           if (!objectRegistration.shouldSignalReady) {
             /// As this isn't an async function we declare it as ready here

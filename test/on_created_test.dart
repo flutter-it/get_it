@@ -122,7 +122,8 @@ void main() {
       );
 
       expect(onCreatedCounter, 1); // Callback was called
-      expect(constructorCounter, 1); // Instance was created before callback threw
+      expect(
+          constructorCounter, 1); // Instance was created before callback threw
     });
 
     test('callback works when lazy singleton is reset and recreated', () async {
@@ -212,7 +213,8 @@ void main() {
       );
 
       expect(onCreatedCounter, 1); // Callback was called
-      expect(constructorCounter, 1); // Instance was created before callback threw
+      expect(
+          constructorCounter, 1); // Instance was created before callback threw
     });
   });
 
@@ -299,7 +301,8 @@ void main() {
       );
 
       expect(onCreatedCounter, 1); // Callback was called
-      expect(constructorCounter, 1); // Instance was created before callback threw
+      expect(
+          constructorCounter, 1); // Instance was created before callback threw
     });
   });
 
