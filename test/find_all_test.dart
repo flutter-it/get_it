@@ -144,7 +144,8 @@ void main() {
       expect(outputs.length, 2);
     });
 
-    test('instantiates lazy singletons when instantiateLazySingletons=true', () {
+    test('instantiates lazy singletons when instantiateLazySingletons=true',
+        () {
       GetIt.I.registerSingleton<FileOutput>(FileOutput());
       GetIt.I.registerLazySingleton<ConsoleOutput>(() => ConsoleOutput());
 
@@ -324,7 +325,9 @@ void main() {
   });
 
   group('findAll - validation errors', () {
-    test('throws ArgumentError when includeSubtypes=false with includeMatchedByInstance=true', () {
+    test(
+        'throws ArgumentError when includeSubtypes=false with includeMatchedByInstance=true',
+        () {
       GetIt.I.registerSingleton<FileOutput>(FileOutput());
 
       expect(
@@ -342,7 +345,9 @@ void main() {
       );
     });
 
-    test('throws ArgumentError when instantiateLazySingletons=true without includeMatchedByRegistrationType', () {
+    test(
+        'throws ArgumentError when instantiateLazySingletons=true without includeMatchedByRegistrationType',
+        () {
       GetIt.I.registerLazySingleton<FileOutput>(() => FileOutput());
 
       expect(
@@ -360,7 +365,9 @@ void main() {
       );
     });
 
-    test('throws ArgumentError when callFactories=true without includeMatchedByRegistrationType', () {
+    test(
+        'throws ArgumentError when callFactories=true without includeMatchedByRegistrationType',
+        () {
       GetIt.I.registerFactory<FileOutput>(() => FileOutput());
 
       expect(
@@ -427,7 +434,8 @@ void main() {
       expect(all.length, 3);
     });
 
-    test('registration type matching takes precedence over instance matching', () {
+    test('registration type matching takes precedence over instance matching',
+        () {
       GetIt.I.registerSingleton<FileOutput>(FileOutput());
 
       final byRegistration = GetIt.I.findAll<FileOutput>();

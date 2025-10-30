@@ -122,9 +122,10 @@ void main() {
         // In real code, the _ObjectRegistration would be generic <T>
         // and could use the trick internally
         return type == FileOutput && isSubtype<FileOutput, IOutput>() ||
-               type == ConsoleOutput && isSubtype<ConsoleOutput, IOutput>() ||
-               type == DatabaseService && isSubtype<DatabaseService, IOutput>() ||
-               type == EnhancedFileOutput && isSubtype<EnhancedFileOutput, IOutput>();
+            type == ConsoleOutput && isSubtype<ConsoleOutput, IOutput>() ||
+            type == DatabaseService && isSubtype<DatabaseService, IOutput>() ||
+            type == EnhancedFileOutput &&
+                isSubtype<EnhancedFileOutput, IOutput>();
       }).toList();
 
       expect(outputTypes.length, 3);

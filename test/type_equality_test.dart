@@ -73,34 +73,38 @@ void main() {
       expect(isSubtype<FileOutput, IOutput>(), true);
 
       print('Registered as: FileOutput');
-      print('Is registered AS IOutput? ${isSameType<FileOutput, IOutput>()}');  // false
-      print('Can be retrieved as IOutput? ${isSubtype<FileOutput, IOutput>()}'); // true
+      print(
+          'Is registered AS IOutput? ${isSameType<FileOutput, IOutput>()}'); // false
+      print(
+          'Can be retrieved as IOutput? ${isSubtype<FileOutput, IOutput>()}'); // true
     });
 
     test('getAll vs findAll distinction', () {
       // Simulating: getIt.registerSingleton<FileOutput>(FileOutput())
 
       // getAll<FileOutput>() - needs exact match
-      expect(isSameType<FileOutput, FileOutput>(), true);  // ✅ Should return it
+      expect(isSameType<FileOutput, FileOutput>(), true); // ✅ Should return it
 
       // getAll<IOutput>() - needs exact match
-      expect(isSameType<FileOutput, IOutput>(), false);    // ❌ Should NOT return it
+      expect(
+          isSameType<FileOutput, IOutput>(), false); // ❌ Should NOT return it
 
       // findAll<FileOutput>() - accepts subtypes
-      expect(isSubtype<FileOutput, FileOutput>(), true);   // ✅ Should return it
+      expect(isSubtype<FileOutput, FileOutput>(), true); // ✅ Should return it
 
       // findAll<IOutput>() - accepts subtypes
-      expect(isSubtype<FileOutput, IOutput>(), true);      // ✅ Should return it
+      expect(isSubtype<FileOutput, IOutput>(), true); // ✅ Should return it
     });
 
     test('Edge cases', () {
       // Child class
-      expect(isSameType<EnhancedFileOutput, FileOutput>(), false);  // Not same
-      expect(isSubtype<EnhancedFileOutput, FileOutput>(), true);    // But is subtype
+      expect(isSameType<EnhancedFileOutput, FileOutput>(), false); // Not same
+      expect(
+          isSubtype<EnhancedFileOutput, FileOutput>(), true); // But is subtype
 
       // Object
-      expect(isSameType<FileOutput, Object>(), false);   // Not same
-      expect(isSubtype<FileOutput, Object>(), true);     // But is subtype
+      expect(isSameType<FileOutput, Object>(), false); // Not same
+      expect(isSubtype<FileOutput, Object>(), true); // But is subtype
 
       // Interface
       expect(isSameType<IOutput, Object>(), false);
