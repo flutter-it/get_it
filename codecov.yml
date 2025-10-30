@@ -1,0 +1,20 @@
+codecov:
+  require_ci_to_pass: yes
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        base: auto
+
+ignore:
+  - "lib/get_it.dart"  # Interface/abstract class - no executable code
+  - "**/*.g.dart"      # Generated files
+  - "example/**"       # Example app
+  - "test/**"          # Test files themselves

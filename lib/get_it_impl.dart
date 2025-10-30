@@ -875,7 +875,8 @@ class _GetItImplementation implements GetIt {
 
         if (registrationTypeMatches) {
           // Handle based on registration type
-          if (registration.registrationType == ObjectRegistrationType.alwaysNew) {
+          if (registration.registrationType ==
+              ObjectRegistrationType.alwaysNew) {
             // Factory
             if (callFactories) {
               instanceToAdd = registration.getObject(null, null);
@@ -1462,6 +1463,53 @@ class _GetItImplementation implements GetIt {
     instanceRegistration._readyCompleter = Completer();
     if (disposeReturn is Future) {
       await disposeReturn;
+    }
+  }
+
+  @override
+  Future<void> resetLazySingletons({
+    bool dispose = true,
+    bool inAllScopes = false,
+    String? onlyInScope,
+  }) async {
+    // Determine which registrations to search
+    final Iterable<_ObjectRegistration> registrationsToSearch;
+
+    if (onlyInScope != null) {
+      final scope = _scopes.firstWhereOrNull((s) => s.name == onlyInScope);
+      throwIf(
+        scope == null,
+        StateError('Scope with name "$onlyInScope" does not exist'),
+      );
+      registrationsToSearch = scope!.allRegistrations;
+    } else if (inAllScopes) {
+      registrationsToSearch = _allRegistrations;
+    } else {
+      registrationsToSearch = _currentScope.allRegistrations;
+    }
+
+    // Filter for lazy singletons that have been instantiated
+    final lazySingletons = registrationsToSearch.where(
+      (reg) =>
+          reg.registrationType == ObjectRegistrationType.lazy &&
+          reg.instance != null,
+    );
+
+    // Reset each lazy singleton
+    for (final registration in lazySingletons) {
+      dynamic disposeReturn;
+
+      if (dispose) {
+        disposeReturn = registration.dispose();
+      }
+
+      registration.resetInstance();
+      registration.pendingResult = null;
+      registration._readyCompleter = Completer();
+
+      if (disposeReturn is Future) {
+        await disposeReturn;
+      }
     }
   }
 

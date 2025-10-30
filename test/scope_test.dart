@@ -857,4 +857,361 @@ void main() {
       expect(getIt.hasScope('scope2'), isTrue);
     });
   });
+
+  group('resetLazySingletons', () {
+    setUp(() async {
+      await GetIt.I.reset();
+      constructorCounter = 0;
+      disposeCounter = 0;
+    });
+
+    test('resets all lazy singletons in current scope', () async {
+      // Register lazy singletons in base scope
+      GetIt.I.registerLazySingleton<TestClass>(() => TestClass('base'));
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('base2'),
+        instanceName: 'instance2',
+      );
+
+      // Access them to create instances
+      final instance1 = GetIt.I<TestClass>();
+      final instance2 = GetIt.I<TestClass>(instanceName: 'instance2');
+      expect(constructorCounter, 2);
+
+      // Reset all lazy singletons in scope
+      await GetIt.I.resetLazySingletons();
+
+      // Next access should create new instances
+      final newInstance1 = GetIt.I<TestClass>();
+      final newInstance2 = GetIt.I<TestClass>(instanceName: 'instance2');
+      expect(constructorCounter, 4);
+      expect(identical(instance1, newInstance1), isFalse);
+      expect(identical(instance2, newInstance2), isFalse);
+    });
+
+    test('only resets lazy singletons in current scope, not parent scopes',
+        () async {
+      // Register lazy singleton in base scope
+      GetIt.I.registerLazySingleton<TestClass>(() => TestClass('base'));
+      final baseInstance = GetIt.I<TestClass>();
+      expect(constructorCounter, 1);
+
+      // Push new scope and register another lazy singleton
+      GetIt.I.pushNewScope();
+      GetIt.I.registerLazySingleton<TestClass>(() => TestClass('scope'),
+          instanceName: 'scope');
+      final scopeInstance = GetIt.I<TestClass>(instanceName: 'scope');
+      expect(constructorCounter, 2);
+
+      // Reset lazy singletons in current (inner) scope
+      await GetIt.I.resetLazySingletons();
+
+      // Base scope instance should NOT be reset
+      final sameBaseInstance = GetIt.I<TestClass>();
+      expect(identical(baseInstance, sameBaseInstance), isTrue);
+
+      // Scope instance should be reset
+      final newScopeInstance = GetIt.I<TestClass>(instanceName: 'scope');
+      expect(constructorCounter, 3);
+      expect(identical(scopeInstance, newScopeInstance), isFalse);
+    });
+
+    test('does not reset lazy singletons that have not been instantiated',
+        () async {
+      // Register lazy singletons but don't access them
+      GetIt.I.registerLazySingleton<TestClass>(() => TestClass('lazy1'));
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('lazy2'),
+        instanceName: 'lazy2',
+      );
+
+      expect(constructorCounter, 0);
+
+      // Reset - should not create any instances
+      await GetIt.I.resetLazySingletons();
+
+      expect(constructorCounter, 0);
+
+      // First access after reset should still work
+      final instance1 = GetIt.I<TestClass>();
+      final instance2 = GetIt.I<TestClass>(instanceName: 'lazy2');
+      expect(constructorCounter, 2);
+    });
+
+    test('does not reset regular singletons', () async {
+      // Register regular singleton
+      final regularSingleton = TestClass('regular');
+      GetIt.I.registerSingleton<TestClass>(regularSingleton);
+
+      // Register lazy singleton
+      GetIt.I.registerLazySingleton<TestClass>(() => TestClass('lazy'),
+          instanceName: 'lazy');
+      final lazyInstance = GetIt.I<TestClass>(instanceName: 'lazy');
+
+      final constructorCountBeforeReset = constructorCounter;
+
+      // Reset lazy singletons
+      await GetIt.I.resetLazySingletons();
+
+      // Regular singleton should be unchanged
+      final sameRegularSingleton = GetIt.I<TestClass>();
+      expect(identical(regularSingleton, sameRegularSingleton), isTrue);
+
+      // Lazy singleton should be reset
+      final newLazyInstance = GetIt.I<TestClass>(instanceName: 'lazy');
+      expect(identical(lazyInstance, newLazyInstance), isFalse);
+      expect(constructorCounter, constructorCountBeforeReset + 1);
+    });
+
+    test('does not reset factories', () async {
+      // Register factory
+      GetIt.I.registerFactory<TestClass>(() => TestClass('factory'));
+
+      // Call factory
+      final factoryInstance1 = GetIt.I<TestClass>();
+      final factoryInstance2 = GetIt.I<TestClass>();
+      expect(constructorCounter, 2);
+
+      // Reset lazy singletons (should not affect factories)
+      await GetIt.I.resetLazySingletons();
+
+      // Factory should still create new instances each time
+      final factoryInstance3 = GetIt.I<TestClass>();
+      expect(constructorCounter, 3);
+    });
+
+    test('calls dispose functions when dispose=true', () async {
+      // Register lazy singleton with dispose function
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('lazy'),
+        dispose: (instance) => instance.dispose(),
+      );
+
+      // Access to create instance
+      final instance = GetIt.I<TestClass>();
+      expect(disposeCounter, 0);
+
+      // Reset with dispose=true (default)
+      await GetIt.I.resetLazySingletons();
+
+      expect(disposeCounter, 1);
+    });
+
+    test('does not call dispose functions when dispose=false', () async {
+      // Register lazy singleton with dispose function
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('lazy'),
+        dispose: (instance) => instance.dispose(),
+      );
+
+      // Access to create instance
+      final instance = GetIt.I<TestClass>();
+      expect(disposeCounter, 0);
+
+      // Reset with dispose=false
+      await GetIt.I.resetLazySingletons(dispose: false);
+
+      expect(disposeCounter, 0);
+
+      // But instance should still be reset
+      final newInstance = GetIt.I<TestClass>();
+      expect(identical(instance, newInstance), isFalse);
+    });
+
+    test('works with named instances', () async {
+      // Register multiple named lazy singletons
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('unnamed'),
+      );
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('named1'),
+        instanceName: 'name1',
+      );
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('named2'),
+        instanceName: 'name2',
+      );
+
+      // Access all to create instances
+      final unnamed = GetIt.I<TestClass>();
+      final named1 = GetIt.I<TestClass>(instanceName: 'name1');
+      final named2 = GetIt.I<TestClass>(instanceName: 'name2');
+      expect(constructorCounter, 3);
+
+      // Reset all lazy singletons
+      await GetIt.I.resetLazySingletons();
+
+      // All should be reset
+      final newUnnamed = GetIt.I<TestClass>();
+      final newNamed1 = GetIt.I<TestClass>(instanceName: 'name1');
+      final newNamed2 = GetIt.I<TestClass>(instanceName: 'name2');
+      expect(constructorCounter, 6);
+      expect(identical(unnamed, newUnnamed), isFalse);
+      expect(identical(named1, newNamed1), isFalse);
+      expect(identical(named2, newNamed2), isFalse);
+    });
+
+    test('works with async dispose functions', () async {
+      // Register lazy singleton with async dispose
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('lazy'),
+        dispose: (instance) async {
+          await Future.delayed(const Duration(milliseconds: 10));
+          instance.dispose();
+        },
+      );
+
+      // Access to create instance
+      final instance = GetIt.I<TestClass>();
+      expect(disposeCounter, 0);
+
+      // Reset - should await async dispose
+      await GetIt.I.resetLazySingletons();
+
+      expect(disposeCounter, 1);
+    });
+
+    test('works when scope has mix of registered types', () async {
+      // Register various types
+      GetIt.I.registerSingleton<TestClass>(TestClass('singleton'));
+      GetIt.I.registerFactory<TestClass>(
+        () => TestClass('factory'),
+        instanceName: 'factory',
+      );
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('lazy'),
+        instanceName: 'lazy',
+      );
+
+      // Access lazy singleton
+      final lazyInstance = GetIt.I<TestClass>(instanceName: 'lazy');
+      final constructorCountBefore = constructorCounter;
+
+      // Reset lazy singletons
+      await GetIt.I.resetLazySingletons();
+
+      // Only lazy singleton should be reset
+      final newLazyInstance = GetIt.I<TestClass>(instanceName: 'lazy');
+      expect(identical(lazyInstance, newLazyInstance), isFalse);
+      expect(constructorCounter, constructorCountBefore + 1);
+    });
+
+    test('resets lazy singletons in all scopes with inAllScopes=true',
+        () async {
+      // Register lazy singletons in base scope
+      GetIt.I.registerLazySingleton<TestClass>(() => TestClass('base'));
+      final baseInstance = GetIt.I<TestClass>();
+
+      // Push scope and register another lazy singleton
+      GetIt.I.pushNewScope(scopeName: 'scope1');
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('scope1'),
+        instanceName: 'scope1',
+      );
+      final scope1Instance = GetIt.I<TestClass>(instanceName: 'scope1');
+
+      // Push another scope and register lazy singleton
+      GetIt.I.pushNewScope(scopeName: 'scope2');
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('scope2'),
+        instanceName: 'scope2',
+      );
+      final scope2Instance = GetIt.I<TestClass>(instanceName: 'scope2');
+
+      expect(constructorCounter, 3);
+
+      // Reset all lazy singletons in all scopes
+      await GetIt.I.resetLazySingletons(inAllScopes: true);
+
+      // All instances should be reset
+      final newBaseInstance = GetIt.I<TestClass>();
+      final newScope1Instance = GetIt.I<TestClass>(instanceName: 'scope1');
+      final newScope2Instance = GetIt.I<TestClass>(instanceName: 'scope2');
+
+      expect(constructorCounter, 6);
+      expect(identical(baseInstance, newBaseInstance), isFalse);
+      expect(identical(scope1Instance, newScope1Instance), isFalse);
+      expect(identical(scope2Instance, newScope2Instance), isFalse);
+    });
+
+    test('resets lazy singletons only in named scope with onlyInScope',
+        () async {
+      // Register lazy singletons in base scope
+      GetIt.I.registerLazySingleton<TestClass>(() => TestClass('base'));
+      final baseInstance = GetIt.I<TestClass>();
+
+      // Push scope and register another lazy singleton
+      GetIt.I.pushNewScope(scopeName: 'targetScope');
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('target'),
+        instanceName: 'target',
+      );
+      final targetInstance = GetIt.I<TestClass>(instanceName: 'target');
+
+      // Push another scope and register lazy singleton
+      GetIt.I.pushNewScope(scopeName: 'otherScope');
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('other'),
+        instanceName: 'other',
+      );
+      final otherInstance = GetIt.I<TestClass>(instanceName: 'other');
+
+      expect(constructorCounter, 3);
+
+      // Reset only lazy singletons in targetScope
+      await GetIt.I.resetLazySingletons(onlyInScope: 'targetScope');
+
+      // Base and other scope instances should NOT be reset
+      final sameBaseInstance = GetIt.I<TestClass>();
+      final sameOtherInstance = GetIt.I<TestClass>(instanceName: 'other');
+      expect(identical(baseInstance, sameBaseInstance), isTrue);
+      expect(identical(otherInstance, sameOtherInstance), isTrue);
+
+      // Target scope instance should be reset
+      final newTargetInstance = GetIt.I<TestClass>(instanceName: 'target');
+      expect(constructorCounter, 4);
+      expect(identical(targetInstance, newTargetInstance), isFalse);
+    });
+
+    test('onlyInScope takes precedence over inAllScopes', () async {
+      // Register lazy singletons in base scope
+      GetIt.I.registerLazySingleton<TestClass>(() => TestClass('base'));
+      final baseInstance = GetIt.I<TestClass>();
+
+      // Push scope and register another lazy singleton
+      GetIt.I.pushNewScope(scopeName: 'targetScope');
+      GetIt.I.registerLazySingleton<TestClass>(
+        () => TestClass('target'),
+        instanceName: 'target',
+      );
+      final targetInstance = GetIt.I<TestClass>(instanceName: 'target');
+
+      expect(constructorCounter, 2);
+
+      // Reset with both parameters - onlyInScope should take precedence
+      await GetIt.I.resetLazySingletons(
+        inAllScopes: true,
+        onlyInScope: 'targetScope',
+      );
+
+      // Base instance should NOT be reset (only targetScope processed)
+      final sameBaseInstance = GetIt.I<TestClass>();
+      expect(identical(baseInstance, sameBaseInstance), isTrue);
+
+      // Target scope instance should be reset
+      final newTargetInstance = GetIt.I<TestClass>(instanceName: 'target');
+      expect(constructorCounter, 3);
+      expect(identical(targetInstance, newTargetInstance), isFalse);
+    });
+
+    test('throws StateError when onlyInScope scope does not exist', () async {
+      GetIt.I.registerLazySingleton<TestClass>(() => TestClass('base'));
+      GetIt.I<TestClass>(); // Access to create instance
+
+      expect(
+        () => GetIt.I.resetLazySingletons(onlyInScope: 'nonexistent'),
+        throwsStateError,
+      );
+    });
+  });
 }

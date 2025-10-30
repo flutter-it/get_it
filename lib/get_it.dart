@@ -703,6 +703,55 @@ abstract class GetIt {
     FutureOr Function(T)? disposingFunction,
   });
 
+  /// Resets all lazy singletons that have been instantiated.
+  ///
+  /// This method finds all lazy singleton registrations that have been instantiated
+  /// and resets them, clearing their instances. The next time [get] is called
+  /// for these types, new instances will be created.
+  ///
+  /// **Scope Parameters:**
+  /// - Default (no params): resets lazy singletons in current scope only
+  /// - [inAllScopes]: if true, resets lazy singletons across all scopes
+  /// - [onlyInScope]: resets lazy singletons only in the named scope (takes precedence over [inAllScopes])
+  ///
+  /// If [dispose] is true (default), the dispose function (if provided during registration)
+  /// will be called on each instance before resetting. For objects implementing [Disposable],
+  /// their [onDispose] method will be called.
+  ///
+  /// This is particularly useful in testing scenarios or when you need to reset state
+  /// within a specific scope without popping the entire scope.
+  ///
+  /// Throws [StateError] if [onlyInScope] scope doesn't exist.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Push a scope and register lazy singletons
+  /// getIt.pushNewScope();
+  /// getIt.registerLazySingleton<CacheService>(() => CacheService());
+  /// getIt.registerLazySingleton<UserService>(() => UserService());
+  ///
+  /// // Access services (creates instances)
+  /// final cache = getIt<CacheService>();
+  /// final user = getIt<UserService>();
+  ///
+  /// // Reset all lazy singletons in current scope
+  /// await getIt.resetLazySingletons();
+  ///
+  /// // Reset lazy singletons in all scopes
+  /// await getIt.resetLazySingletons(inAllScopes: true);
+  ///
+  /// // Reset lazy singletons in specific scope
+  /// await getIt.resetLazySingletons(onlyInScope: 'myScope');
+  ///
+  /// // Next access will create fresh instances
+  /// final newCache = getIt<CacheService>(); // New instance
+  /// ```
+  Future<void> resetLazySingletons({
+    bool dispose = true,
+    bool inAllScopes = false,
+    String? onlyInScope,
+  });
+
   /// Checks if a lazy singleton instance has been created and exists.
   ///
   /// This method verifies whether a lazy singleton of type [T] (optionally identified by [instanceName])
