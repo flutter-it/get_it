@@ -235,21 +235,105 @@ abstract class GetIt {
   /// The returned `Iterable` will then contain all registered instances of the requested interface [T] with or without an instance name.
   /// if the registrations are factories they will each be called with the provided parameters [param1,param2] and
   /// the results will be returned in the Iterable.
-  /// [fromAllScopes] if `true` it will return all instances from all scopes otherwise only from the current scope
+  ///
+  /// **Scope Parameters:**
+  /// - Default (no params): searches current scope only
+  /// - [fromAllScopes]: if true, searches all scopes
+  /// - [onlyInScope]: searches only the named scope (takes precedence over [fromAllScopes])
+  ///
+  /// Throws [StateError] if [onlyInScope] scope doesn't exist.
   Iterable<T> getAll<T extends Object>({
     dynamic param1,
     dynamic param2,
     bool fromAllScopes = false,
+    String? onlyInScope,
   });
 
   /// The returned `Future<Iterable>` will then contain all registered async registrations of the requested interface [T] with or without an instance name.
   /// if the registrations are factories they will each be called with the provided parameters [param1,param2] and
   /// the results will be returned in the Iterable.
-  /// [fromAllScopes] if `true` it will return all instances from all scopes otherwise only from the current scope
+  ///
+  /// **Scope Parameters:**
+  /// - Default (no params): searches current scope only
+  /// - [fromAllScopes]: if true, searches all scopes
+  /// - [onlyInScope]: searches only the named scope (takes precedence over [fromAllScopes])
+  ///
+  /// Throws [StateError] if [onlyInScope] scope doesn't exist.
   Future<Iterable<T>> getAllAsync<T extends Object>({
     dynamic param1,
     dynamic param2,
     bool fromAllScopes = false,
+    String? onlyInScope,
+  });
+
+  /// Returns a list of all registered instances that match type [T].
+  ///
+  /// **Performance Note:** Unlike get_it's O(1) Map-based lookups, this method performs
+  /// an O(n) linear search through all registrations. Use sparingly in performance-critical code.
+  /// Performance can be improved by limiting the search to a single scope using [onlyInScope].
+  ///
+  /// [includeSubtypes] if true (default), matches T and all subtypes.
+  ///                   if false, matches only exact type T.
+  ///                   Note: exact type matching only works with registration type matching.
+  ///
+  /// **Scope Parameters:**
+  /// - Default (no params): searches current scope only
+  /// - [inAllScopes]: if true, searches all scopes
+  /// - [onlyInScope]: searches only the named scope (takes precedence over [inAllScopes])
+  ///
+  /// **Matching Strategy:**
+  /// - [includeMatchedByRegistrationType]: if true (default), includes registrations where
+  ///   the registered type is a subtype of T (no instance needed, works for lazy singletons/factories)
+  /// - [includeMatchedByInstance]: if true (default), includes registrations where the
+  ///   actual instance type is a subtype of T (requires instance to exist)
+  ///
+  /// **Side Effects (only when includeMatchedByRegistrationType=true):**
+  /// - [instantiateLazySingletons]: if true, instantiates lazy singletons that match to include them
+  /// - [callFactories]: if true, calls factories that match to include their instances
+  ///
+  /// **Validation:**
+  /// - [includeSubtypes]=false requires [includeMatchedByInstance]=false
+  ///   (runtime type checking cannot distinguish exact types from subtypes)
+  /// - [instantiateLazySingletons]=true requires [includeMatchedByRegistrationType]=true
+  /// - [callFactories]=true requires [includeMatchedByRegistrationType]=true
+  ///
+  /// Throws [StateError] if [onlyInScope] scope doesn't exist.
+  /// Throws [ArgumentError] if validation rules are violated.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Register types
+  /// getIt.registerSingleton<FileOutput>(FileOutput());
+  /// getIt.registerLazySingleton<ConsoleOutput>(() => ConsoleOutput());
+  /// getIt.registerFactory<IOutput>(() => RemoteOutput());
+  ///
+  /// // Find by registration type (default)
+  /// final outputs = getIt.findAll<IOutput>();  // Returns [FileOutput] only
+  ///
+  /// // Include lazy singletons by instantiating them
+  /// final all = getIt.findAll<IOutput>(instantiateLazySingletons: true);
+  /// // Returns [FileOutput, ConsoleOutput]
+  ///
+  /// // Include factories by calling them
+  /// final withFactories = getIt.findAll<IOutput>(
+  ///   instantiateLazySingletons: true,
+  ///   callFactories: true,
+  /// ); // Returns [FileOutput, ConsoleOutput, RemoteOutput]
+  ///
+  /// // Find only by actual instance type
+  /// final instances = getIt.findAll<IOutput>(
+  ///   includeMatchedByRegistrationType: false,
+  ///   includeMatchedByInstance: true,
+  /// ); // Returns instances that implement IOutput
+  /// ```
+  List<T> findAll<T extends Object>({
+    bool includeSubtypes = true,
+    bool inAllScopes = false,
+    String? onlyInScope,
+    bool includeMatchedByRegistrationType = true,
+    bool includeMatchedByInstance = true,
+    bool instantiateLazySingletons = false,
+    bool callFactories = false,
   });
 
   /// Callable class so that you can write `GetIt.instance<MyType>` instead of

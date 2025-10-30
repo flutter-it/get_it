@@ -164,6 +164,18 @@ class _ObjectRegistration<T extends Object, P1, P2>
     }
   }
 
+  /// Checks if the registered type T is a subtype of S (or the same type)
+  /// Uses the generic list covariance trick: <T>[] is List<S>
+  bool isSubtypeOf<S>() {
+    return <T>[] is List<S>;
+  }
+
+  /// Checks if the registered type T is exactly the same as type S (not just a subtype)
+  /// Uses bidirectional check: both T->S and S->T must be true
+  bool isExactType<S>() {
+    return <T>[] is List<S> && <S>[] is List<T>;
+  }
+
   /// returns an instance depending on the type of the registration if [async==false]
   T getObject(dynamic param1, dynamic param2) {
     assert(
@@ -684,15 +696,25 @@ class _GetItImplementation implements GetIt {
     dynamic param1,
     dynamic param2,
     bool fromAllScopes = false,
+    String? onlyInScope,
   }) {
     final Iterable<T> instances;
-    if (!fromAllScopes) {
-      instances = _currentScope.getAll<T>(param1: param1, param2: param2);
-    } else {
+
+    if (onlyInScope != null) {
+      // Search specific named scope
+      final scope = _scopes.firstWhereOrNull((s) => s.name == onlyInScope);
+      throwIf(
+        scope == null,
+        StateError('Scope with name "$onlyInScope" does not exist'),
+      );
+      instances = scope!.getAll<T>(param1: param1, param2: param2);
+    } else if (fromAllScopes) {
       instances = [
         for (final scope in _scopes)
           ...scope.getAll<T>(param1: param1, param2: param2),
       ];
+    } else {
+      instances = _currentScope.getAll<T>(param1: param1, param2: param2);
     }
 
     throwIf(
@@ -746,18 +768,28 @@ class _GetItImplementation implements GetIt {
     dynamic param1,
     dynamic param2,
     bool fromAllScopes = false,
+    String? onlyInScope,
   }) async {
     final Iterable<T> instances;
-    if (!fromAllScopes) {
-      instances = await _currentScope.getAllAsync<T>(
-        param1: param1,
-        param2: param2,
+
+    if (onlyInScope != null) {
+      // Search specific named scope
+      final scope = _scopes.firstWhereOrNull((s) => s.name == onlyInScope);
+      throwIf(
+        scope == null,
+        StateError('Scope with name "$onlyInScope" does not exist'),
       );
-    } else {
+      instances = await scope!.getAllAsync<T>(param1: param1, param2: param2);
+    } else if (fromAllScopes) {
       instances = [
         for (final scope in _scopes)
           ...await scope.getAllAsync<T>(param1: param1, param2: param2),
       ];
+    } else {
+      instances = await _currentScope.getAllAsync<T>(
+        param1: param1,
+        param2: param2,
+      );
     }
 
     throwIf(
@@ -769,6 +801,110 @@ class _GetItImplementation implements GetIt {
         '\nDid you forget to register it?)',
       ),
     );
+
+    return instances;
+  }
+
+  @override
+  List<T> findAll<T extends Object>({
+    bool includeSubtypes = true,
+    bool inAllScopes = false,
+    String? onlyInScope,
+    bool includeMatchedByRegistrationType = true,
+    bool includeMatchedByInstance = true,
+    bool instantiateLazySingletons = false,
+    bool callFactories = false,
+  }) {
+    // Validations
+    throwIf(
+      !includeSubtypes && includeMatchedByInstance,
+      ArgumentError(
+        'includeSubtypes=false (exact type matching) is only possible with '
+        'registration type matching. Runtime instance type checking (is operator) '
+        'cannot distinguish exact types from subtypes. '
+        'Either set includeSubtypes=true or includeMatchedByInstance=false.',
+      ),
+    );
+
+    throwIf(
+      instantiateLazySingletons && !includeMatchedByRegistrationType,
+      ArgumentError(
+        'instantiateLazySingletons=true requires includeMatchedByRegistrationType=true. '
+        'Cannot determine which lazy singletons to instantiate without checking registration types.',
+      ),
+    );
+
+    throwIf(
+      callFactories && !includeMatchedByRegistrationType,
+      ArgumentError(
+        'callFactories=true requires includeMatchedByRegistrationType=true. '
+        'Cannot determine which factories to call without checking registration types.',
+      ),
+    );
+
+    // Determine which registrations to search
+    final Iterable<_ObjectRegistration> registrationsToSearch;
+
+    if (onlyInScope != null) {
+      // Search specific named scope
+      final scope = _scopes.firstWhereOrNull((s) => s.name == onlyInScope);
+      throwIf(
+        scope == null,
+        StateError('Scope with name "$onlyInScope" does not exist'),
+      );
+      registrationsToSearch = scope!.allRegistrations;
+    } else if (inAllScopes) {
+      // Search all scopes
+      registrationsToSearch = _allRegistrations;
+    } else {
+      // Search current scope only (default)
+      registrationsToSearch = _currentScope.allRegistrations;
+    }
+
+    // Find matching instances
+    final List<T> instances = <T>[];
+
+    for (final registration in registrationsToSearch) {
+      Object? instanceToAdd;
+
+      // Check registration type match
+      if (includeMatchedByRegistrationType) {
+        final bool registrationTypeMatches = includeSubtypes
+            ? registration.isSubtypeOf<T>()
+            : registration.isExactType<T>();
+
+        if (registrationTypeMatches) {
+          // Handle based on registration type
+          if (registration.registrationType == ObjectRegistrationType.alwaysNew) {
+            // Factory
+            if (callFactories) {
+              instanceToAdd = registration.getObject(null, null);
+            }
+          } else if (registration.instance != null) {
+            // Already instantiated singleton
+            instanceToAdd = registration.instance;
+          } else if (instantiateLazySingletons &&
+              registration.registrationType == ObjectRegistrationType.lazy) {
+            // Uninstantiated lazy singleton - instantiate it
+            instanceToAdd = registration.getObject(null, null);
+          }
+        }
+      }
+
+      // Check instance type match (if we haven't found a match yet)
+      if (includeMatchedByInstance && instanceToAdd == null) {
+        if (registration.instance != null) {
+          final instance = registration.instance!;
+          if (instance is T) {
+            instanceToAdd = instance;
+          }
+        }
+      }
+
+      if (instanceToAdd != null) {
+        instances.add(instanceToAdd as T);
+      }
+    }
 
     return instances;
   }
