@@ -25,9 +25,12 @@ class AsyncTestService {
 
 class AsyncTestServiceWithSignal extends AsyncTestService
     implements WillSignalReady {
-  AsyncTestServiceWithSignal(super.id);
+  AsyncTestServiceWithSignal(super.id) {
+    // Start the async signaling process from constructor
+    _init();
+  }
 
-  Future<void> init() async {
+  Future<void> _init() async {
     await Future.delayed(const Duration(milliseconds: 10));
     GetIt.I.signalReady(this);
   }
@@ -258,10 +261,8 @@ void main() {
     test('callback is called even with signalsReady', () async {
       GetIt.I.registerSingletonAsync<AsyncTestServiceWithSignal>(
         () async {
-          final instance = AsyncTestServiceWithSignal('singleton1');
-          // Instance will signal ready from its init method
-          instance.init();
-          return instance;
+          // Constructor starts async signaling process
+          return AsyncTestServiceWithSignal('singleton1');
         },
         signalsReady: true,
         onCreated: (instance) {
