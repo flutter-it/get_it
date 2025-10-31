@@ -36,9 +36,6 @@ class _ObjectRegistration<T extends Object, P1, P2>
   final _TypeRegistration registeredIn;
   final _Scope registrationScope;
 
-  late final Type param1Type;
-  late final Type param2Type;
-
   P1? lastParam1;
   P2? lastParam2;
 
@@ -139,8 +136,6 @@ class _ObjectRegistration<T extends Object, P1, P2>
           'that implements "Disposable" but you also provide a disposing function',
         ) {
     registeredWithType = T;
-    param1Type = P1;
-    param2Type = P2;
     _readyCompleter = Completer();
   }
 
@@ -175,9 +170,8 @@ class _ObjectRegistration<T extends Object, P1, P2>
   }
 
   /// Checks if the registered type T is exactly the same as type S (not just a subtype)
-  /// Uses bidirectional check: both T->S and S->T must be true
   bool isExactType<S>() {
-    return <T>[] is List<S> && <S>[] is List<T>;
+    return T == S;
   }
 
   /// Validates that factory parameters are compatible with their expected types.
@@ -189,9 +183,7 @@ class _ObjectRegistration<T extends Object, P1, P2>
     // Validate param1
     if (param1 != null || <P1?>[] is! List<P1>) {
       // param1 is provided OR P1 is non-nullable (must validate)
-      try {
-        param1 as P1;
-      } catch (e) {
+      if (param1 is! P1) {
         throw ArgumentError(
           "GetIt: Cannot use parameter value of type '${param1.runtimeType}' "
           "as type '$P1' for factory of type '$T'.\n"
@@ -204,9 +196,7 @@ class _ObjectRegistration<T extends Object, P1, P2>
     // Validate param2
     if (param2 != null || <P2?>[] is! List<P2>) {
       // param2 is provided OR P2 is non-nullable (must validate)
-      try {
-        param2 as P2;
-      } catch (e) {
+      if (param2 is! P2) {
         throw ArgumentError(
           "GetIt: Cannot use parameter value of type '${param2.runtimeType}' "
           "as type '$P2' for factory of type '$T'.\n"
@@ -244,12 +234,12 @@ class _ObjectRegistration<T extends Object, P1, P2>
               param2 == lastParam2) {
             return weakReferenceInstance!.target!;
           } else {
-            lastParam1 = param1 as P1?;
-            lastParam2 = param2 as P2?;
             T newInstance;
             if (creationFunctionParam != null) {
-              // Validate parameters in debug mode
+              // Validate parameters in debug mode BEFORE casting
               _validateFactoryParams(param1, param2);
+              lastParam1 = param1 as P1?;
+              lastParam2 = param2 as P2?;
               newInstance = creationFunctionParam!(param1 as P1, param2 as P2);
             } else {
               newInstance = creationFunction!();
@@ -337,10 +327,10 @@ class _ObjectRegistration<T extends Object, P1, P2>
             return Future<R>.value(weakReferenceInstance!.target! as R);
           } else {
             if (creationFunctionParam != null) {
+              // Validate parameters in debug mode BEFORE casting
+              _validateFactoryParams(param1, param2);
               lastParam1 = param1 as P1?;
               lastParam2 = param2 as P2?;
-              // Validate parameters in debug mode
-              _validateFactoryParams(param1, param2);
               return asyncCreationFunctionParam!(
                 param1 as P1,
                 param2 as P2,

@@ -101,8 +101,6 @@ class WaitingTimeOutException implements Exception {
 
   WaitingTimeOutException(this.areWaitedBy, this.notReadyYet, this.areReady);
 
-  // todo : assert(areWaitedBy != null && notReadyYet != null && areReady != null);
-
   @override
   String toString() {
     print(
