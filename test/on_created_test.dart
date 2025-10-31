@@ -273,6 +273,9 @@ void main() {
       await GetIt.I.isReady<AsyncTestServiceWithSignal>();
 
       expect(onCreatedCounter, 1);
+
+      // Allow async signaling to fully complete
+      await Future.delayed(const Duration(milliseconds: 20));
     });
 
     test('callback works with dependencies', () async {
