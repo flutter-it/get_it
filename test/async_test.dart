@@ -759,7 +759,13 @@ void main() {
 
     expect(
       () => getIt.getAsync<TestClassParam>(param1: 'abc', param2: '3'),
-      throwsA(isA<TypeError>()),
+      throwsA(
+        isA<ArgumentError>().having(
+          (e) => e.message,
+          'message',
+          contains("Cannot use parameter value of type 'String' as type 'int'"),
+        ),
+      ),
     );
   });
 
@@ -774,7 +780,16 @@ void main() {
         (s, i) async => TestClassParam(param1: s),
       );
 
-      expect(() => getIt.getAsync<TestClassParam>(), throwsA(isA<TypeError>()));
+      expect(
+        () => getIt.getAsync<TestClassParam>(),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('Param1 is required (non-nullable) but null was passed'),
+          ),
+        ),
+      );
     },
   );
 
