@@ -1,3 +1,11 @@
+## [8.3.0]
+
+* Added `findAll()` method for finding all registered instances by type with flexible matching options (subtypes, interfaces, scope filtering)
+* Added `resetLazySingletons()` method to reset multiple lazy singletons at once with optional scope parameters
+* Added `onCreated` callback parameter to `registerLazySingleton`, `registerLazySingletonAsync`, and `registerSingletonAsync` for lifecycle hooks
+* Improved parameter validation error messages in debug mode - now provides clear, actionable feedback when wrong parameter types are passed to factories
+* Fixed bug in cached factories where parameter validation could throw unhelpful errors
+
 ## [8.2.0]
 
 Thanks to PR by @Hu-Wentao we now expose part of the internal state of get_it so tool authors have more options. While doing so internal renaming has happened, so where previously where the term "ServiceFactory" was uses we not use consistently `ObjectRegistration` and instead of variables with `factory` in the name we use `registration` this has not impact on the public API so it is not a breaking change.
