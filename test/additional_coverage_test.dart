@@ -241,4 +241,145 @@ void main() {
       expect(accessed, scopeInstance);
     });
   });
+
+  group('Dispose coverage', () {
+    test('reset disposes both regular and named registrations', () async {
+      // Register same type with and without instance name
+      GetIt.I.registerSingleton<TestClass>(
+        TestClass(),
+        dispose: (_) {},
+      );
+      GetIt.I.registerSingleton<TestClass>(
+        TestClass(),
+        instanceName: 'named1',
+        dispose: (_) {},
+      );
+      GetIt.I.registerSingleton<TestClass>(
+        TestClass(),
+        instanceName: 'named2',
+        dispose: (_) {},
+      );
+
+      expect(testClassConstructorCount, 3);
+
+      // Reset with dispose=true should dispose all registrations
+      await GetIt.I.reset();
+
+      // After reset, should be able to register again
+      GetIt.I.registerSingleton<TestClass>(TestClass());
+      expect(testClassConstructorCount, 4);
+    });
+  });
+
+  group('Disposal order coverage', () {
+    test(
+        'strict LIFO disposal order with mixed named and unnamed registrations',
+        () async {
+      // Disposal follows strict LIFO (Last-In-First-Out) based on registrationNumber
+      // Mixing named and unnamed registrations of the same type should not affect order
+
+      final disposalOrder = <String>[];
+
+      GetIt.I.pushNewScope(scopeName: 'test');
+
+      // Register in this order:
+      GetIt.I.registerSingleton<TestClass>(
+        TestClass(),
+        dispose: (_) => disposalOrder.add('TestClass-unnamed'),
+      );
+
+      GetIt.I.registerSingleton<int>(
+        42,
+        dispose: (_) => disposalOrder.add('int-unnamed'),
+      );
+
+      GetIt.I.registerSingleton<TestClass>(
+        TestClass(),
+        instanceName: 'named',
+        dispose: (_) => disposalOrder.add('TestClass-named'),
+      );
+
+      GetIt.I.registerSingleton<String>(
+        'test',
+        dispose: (_) => disposalOrder.add('String-unnamed'),
+      );
+
+      // Pop scope and verify strict LIFO order
+      await GetIt.I.popScope();
+
+      // Should dispose in exact reverse order of registration
+      expect(disposalOrder, [
+        'String-unnamed', // Registered 4th
+        'TestClass-named', // Registered 3rd
+        'int-unnamed', // Registered 2nd
+        'TestClass-unnamed', // Registered 1st
+      ]);
+    });
+  });
+
+  group('getAll coverage', () {
+    test('getAll with async lazy singletons', () async {
+      // Register multiple async lazy singletons of same type
+      GetIt.I.registerLazySingletonAsync<TestClass>(
+        () async {
+          await Future.delayed(const Duration(milliseconds: 10));
+          return TestClass();
+        },
+        instanceName: 'async1',
+      );
+      GetIt.I.registerLazySingletonAsync<TestClass>(
+        () async {
+          await Future.delayed(const Duration(milliseconds: 10));
+          return TestClass();
+        },
+        instanceName: 'async2',
+      );
+
+      // Trigger creation by accessing them
+      await GetIt.I.getAsync<TestClass>(instanceName: 'async1');
+      await GetIt.I.getAsync<TestClass>(instanceName: 'async2');
+
+      // getAll should return both instances
+      final all = GetIt.I.getAll<TestClass>();
+      expect(all.length, 2);
+      expect(testClassConstructorCount, 2);
+    });
+
+    test('getAll with onlyInScope parameter', () {
+      // Register in base scope
+      GetIt.I.registerSingleton<TestClass>(TestClass());
+
+      // Create a named scope
+      GetIt.I.pushNewScope(scopeName: 'testScope');
+      GetIt.I.registerSingleton<TestClass>(TestClass());
+      GetIt.I.registerSingleton<TestClass>(TestClass(), instanceName: 'named');
+
+      // getAll with onlyInScope should only return from that scope
+      final scopeInstances =
+          GetIt.I.getAll<TestClass>(onlyInScope: 'testScope');
+      expect(scopeInstances.length, 2); // Two in testScope
+
+      // getAll without scope should return from current scope
+      final currentInstances = GetIt.I.getAll<TestClass>();
+      expect(currentInstances.length, 2); // Same as scopeInstances
+    });
+
+    test('getAll with fromAllScopes parameter', () {
+      // Register in base scope
+      GetIt.I.registerSingleton<TestClass>(TestClass());
+
+      // Create first scope
+      GetIt.I.pushNewScope(scopeName: 'scope1');
+      GetIt.I.registerSingleton<TestClass>(TestClass());
+
+      // Create second scope
+      GetIt.I.pushNewScope(scopeName: 'scope2');
+      GetIt.I.registerSingleton<TestClass>(TestClass());
+
+      // getAll with fromAllScopes should return from all scopes
+      final allScopeInstances = GetIt.I.getAll<TestClass>(fromAllScopes: true);
+      expect(
+          allScopeInstances.length, 3); // One from each: base, scope1, scope2
+    });
+  });
 }

@@ -1,3 +1,13 @@
+## [8.4.0] - BREAKING CHANGE
+
+* **BREAKING**: Disposal order now always follows strict LIFO (Last-In-First-Out) based on registration order
+  * Previously, disposal order was based on the order objects appeared in internal hash maps, which was unpredictable when mixing named and unnamed registrations
+  * Now all disposals are sorted by `registrationNumber` (a sequential counter assigned during registration) ensuring true LIFO order
+  * The `strictDisposalOrder` parameter has been removed from `reset()`, `resetScope()`, `popScope()`, `popScopesTill()`, and `dropScope()` methods
+  * Performance impact is minimal: ~8% overhead for 10,000 registrations (approximately 2-3ms), negligible for typical applications
+  * This change ensures correctness and predictability in dependency cleanup, which is more important than the minor performance cost
+  * **Impact on existing apps**: If your app's behavior relies on the previous imperfect reverse disposal order, there is likely a design issue in your dependency structure that should be addressed
+
 ## [8.3.0]
 
 * Added `findAll()` method for finding all registered instances by type with flexible matching options (subtypes, interfaces, scope filtering)

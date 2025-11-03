@@ -36,6 +36,9 @@ class _ObjectRegistration<T extends Object, P1, P2>
   final _TypeRegistration registeredIn;
   final _Scope registrationScope;
 
+  /// Unique registration number for tracking registration order
+  final int registrationNumber;
+
   P1? lastParam1;
   P2? lastParam2;
 
@@ -114,6 +117,7 @@ class _ObjectRegistration<T extends Object, P1, P2>
   _ObjectRegistration(
     this._getItInstance,
     this.registrationType, {
+    required this.registrationNumber,
     this.creationFunction,
     this.asyncCreationFunction,
     this.creationFunctionParam,
@@ -415,17 +419,6 @@ class _TypeRegistration<T extends Object> {
       LinkedHashMap<String, _ObjectRegistration<T, dynamic, dynamic>>();
   final registrations = <_ObjectRegistration<T, dynamic, dynamic>>[];
 
-  void dispose() {
-    for (final registration in registrations.reversed) {
-      registration.dispose();
-    }
-    registrations.clear();
-    for (final registration in namedRegistrations.values.toList().reversed) {
-      registration.dispose();
-    }
-    namedRegistrations.clear();
-  }
-
   bool get isEmpty => registrations.isEmpty && namedRegistrations.isEmpty;
 
   _ObjectRegistration<T, dynamic, dynamic>? getRegistration(String? name) {
@@ -447,7 +440,11 @@ class _Scope {
 
   Future<void> reset({required bool dispose}) async {
     if (dispose) {
-      for (final registration in allRegistrations.reversed) {
+      // Always use strict LIFO disposal order (sorted by registrationNumber)
+      final registrations = allRegistrations.toList()
+        ..sort((a, b) => b.registrationNumber.compareTo(a.registrationNumber));
+
+      for (final registration in registrations) {
         await registration.dispose();
       }
     }
@@ -537,6 +534,9 @@ class _GetItImplementation implements GetIt {
   final _scopes = [_Scope(name: _baseScopeName)];
 
   _Scope get _currentScope => _scopes.last;
+
+  /// Global registration number counter for tracking registration order
+  int _registrationNumber = 0;
 
   _GetItImplementation();
 
@@ -1939,6 +1939,7 @@ class _GetItImplementation implements GetIt {
     final objectRegistration = _ObjectRegistration<T, P1, P2>(
       this,
       type,
+      registrationNumber: _registrationNumber++,
       registeredIn: typeRegistration,
       registrationScope: registrationScope,
       creationFunction: factoryFunc,
