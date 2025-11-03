@@ -1,3 +1,7 @@
+## [9.0.5] - 2025-01-12
+
+* Use absolute GitHub URL for logo in README
+
 ## [9.0.4] - 2025-01-12
 
 * Fixed screenshots description to match working 9.0.1 format
