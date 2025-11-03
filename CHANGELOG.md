@@ -1,3 +1,7 @@
+## [9.0.2] - 2025-01-12
+
+* Fixed button sizing in README for pub.dev display
+
 ## [9.0.1]
 
 * Fixed linter error (missing trailing comma in test file)
