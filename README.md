@@ -8,7 +8,7 @@
 
 <br clear="both"/>
 
-# get_it <a href="https://codecov.io/gh/flutter-it/get_it"><img align="right" src="https://codecov.io/gh/flutter-it/get_it/branch/master/graph/badge.svg?style=for-the-badge" alt="codecov"/></a>
+# get_it <a href="https://codecov.io/gh/flutter-it/get_it"><img align="right" src="https://codecov.io/gh/flutter-it/get_it/branch/master/graph/badge.svg?style=for-the-badge" alt="codecov" width="120"/></a>
 
 > 📚 **[Complete documentation available at flutter-it.dev](https://flutter-it.dev)**
 > Check out the comprehensive docs with detailed guides, examples, and best practices!
