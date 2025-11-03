@@ -330,7 +330,7 @@ class _ObjectRegistration<T extends Object, P1, P2>
               param2 == lastParam2) {
             return Future<R>.value(weakReferenceInstance!.target! as R);
           } else {
-            if (creationFunctionParam != null) {
+            if (asyncCreationFunctionParam != null) {
               // Validate parameters in debug mode BEFORE casting
               _validateFactoryParams(param1, param2);
               lastParam1 = param1 as P1?;

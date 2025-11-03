@@ -7,6 +7,7 @@
   * Performance impact is minimal: ~8% overhead for 10,000 registrations (approximately 2-3ms), negligible for typical applications
   * This change ensures correctness and predictability in dependency cleanup, which is more important than the minor performance cost
   * **Impact on existing apps**: If your app's behavior relies on the previous imperfect reverse disposal order, there is likely a design issue in your dependency structure that should be addressed
+* Fixed bug in `registerCachedFactoryParamAsync` where calling `getAsync` would fail with null error because it was checking the wrong function parameter (sync `creationFunctionParam` instead of `asyncCreationFunctionParam`)
 
 ## [8.3.0]
 

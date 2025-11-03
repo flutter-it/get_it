@@ -381,5 +381,190 @@ void main() {
       expect(
           allScopeInstances.length, 3); // One from each: base, scope1, scope2
     });
+
+    test('getAllAsync with onlyInScope parameter', () async {
+      // Register different types in different scopes to verify scope isolation
+      GetIt.I.registerLazySingletonAsync<TestClass>(
+        () async => TestClass(),
+      );
+
+      GetIt.I.pushNewScope(scopeName: 'scope1');
+      GetIt.I.registerLazySingletonAsync<String>(
+        () async => 'scope1-value',
+      );
+
+      GetIt.I.pushNewScope(scopeName: 'scope2');
+      GetIt.I.registerLazySingletonAsync<int>(
+        () async => 42,
+      );
+
+      // getAllAsync with onlyInScope should return only String from scope1
+      final scope1Instances =
+          await GetIt.I.getAllAsync<String>(onlyInScope: 'scope1');
+      expect(scope1Instances.length, 1);
+      expect(scope1Instances.first, isA<String>());
+      expect(scope1Instances.first, 'scope1-value');
+    });
+
+    test('getAllAsync with fromAllScopes parameter', () async {
+      // Register async lazy singletons in different scopes
+      GetIt.I.registerLazySingletonAsync<TestClass>(
+        () async => TestClass(),
+        instanceName: 'base',
+      );
+
+      GetIt.I.pushNewScope(scopeName: 'scope1');
+      GetIt.I.registerLazySingletonAsync<TestClass>(
+        () async => TestClass(),
+        instanceName: 'scope1',
+      );
+
+      GetIt.I.pushNewScope(scopeName: 'scope2');
+      GetIt.I.registerLazySingletonAsync<TestClass>(
+        () async => TestClass(),
+        instanceName: 'scope2',
+      );
+
+      // getAllAsync with fromAllScopes should return from all scopes
+      final allInstances =
+          await GetIt.I.getAllAsync<TestClass>(fromAllScopes: true);
+      expect(allInstances.length, 3);
+    });
+  });
+
+  group('registerCachedFactoryParamAsync coverage', () {
+    test('registerCachedFactoryParamAsync should cache instances', () async {
+      int callCount = 0;
+
+      GetIt.I.registerCachedFactoryParamAsync<TestClass, String, int>(
+        (param1, param2) async {
+          callCount++;
+          await Future.delayed(const Duration(milliseconds: 10));
+          return TestClass();
+        },
+      );
+
+      // First call should execute factory
+      final instance1 = await GetIt.I.getAsync<TestClass>(
+        param1: 'test',
+        param2: 42,
+      );
+      expect(callCount, 1);
+      expect(instance1, isA<TestClass>());
+
+      // Second call with same params should return cached instance
+      final instance2 = await GetIt.I.getAsync<TestClass>(
+        param1: 'test',
+        param2: 42,
+      );
+      expect(callCount, 1); // Should not call factory again
+      expect(identical(instance1, instance2), true);
+
+      // Call with different params should execute factory again
+      final instance3 = await GetIt.I.getAsync<TestClass>(
+        param1: 'different',
+        param2: 99,
+      );
+      expect(callCount, 2);
+      expect(identical(instance1, instance3), false);
+    });
+  });
+
+  group('findFirstObjectRegistration coverage', () {
+    test('findFirstObjectRegistration by instance across scopes', () {
+      // Register String instances with different values in different scopes
+      GetIt.I.registerSingleton<String>('base-value', instanceName: 'base');
+
+      GetIt.I.pushNewScope(scopeName: 'scope1');
+      GetIt.I.registerSingleton<String>('scope1-value', instanceName: 'scope1');
+
+      GetIt.I.pushNewScope(scopeName: 'scope2');
+      GetIt.I.registerSingleton<String>('scope2-value', instanceName: 'scope2');
+
+      // Get the scope1 instance to find its registration
+      final scope1Instance = GetIt.I.get<String>(instanceName: 'scope1');
+
+      // findFirstObjectRegistration should find the specific instance
+      final registration =
+          GetIt.I.findFirstObjectRegistration(instance: scope1Instance);
+      expect(registration, isNotNull);
+      expect(registration!.registeredWithType, String);
+      expect(registration.instanceName, 'scope1');
+
+      // Verify we got the right instance by checking its value
+      expect(scope1Instance, 'scope1-value');
+    });
+
+    test(
+        'findFirstObjectRegistration by type and name searches current scope first',
+        () async {
+      // Register named instances with different values in each scope
+      GetIt.I.registerSingleton<String>(
+        'base-target',
+        instanceName: 'target',
+      );
+
+      GetIt.I.pushNewScope(scopeName: 'scope1');
+      GetIt.I.registerSingleton<String>(
+        'scope1-target',
+        instanceName: 'target',
+      );
+
+      GetIt.I.pushNewScope(scopeName: 'scope2');
+      GetIt.I.registerSingleton<String>(
+        'scope2-target',
+        instanceName: 'target',
+      );
+
+      // findFirstObjectRegistration searches from current scope backwards
+      // so it should find scope2's 'target' first
+      final registration =
+          GetIt.I.findFirstObjectRegistration<String>(instanceName: 'target');
+      expect(registration, isNotNull);
+      expect(registration!.registeredWithType, String);
+      expect(registration.instanceName, 'target');
+
+      // Verify it found the current scope's instance (scope2)
+      final instance = GetIt.I.get<String>(instanceName: 'target');
+      expect(instance, 'scope2-target');
+
+      // Pop scope2 and verify we now find scope1's instance
+      await GetIt.I.popScope();
+      final registration2 =
+          GetIt.I.findFirstObjectRegistration<String>(instanceName: 'target');
+      final instance2 = GetIt.I.get<String>(instanceName: 'target');
+      expect(instance2, 'scope1-target');
+      expect(registration2!.instanceName, 'target');
+    });
+
+    test(
+        'findFirstObjectRegistration by type only searches current scope first',
+        () async {
+      // Register unnamed instances with different values in each scope
+      GetIt.I.registerSingleton<String>('base-unnamed');
+
+      GetIt.I.pushNewScope(scopeName: 'scope1');
+      GetIt.I.registerSingleton<String>('scope1-unnamed');
+
+      GetIt.I.pushNewScope(scopeName: 'scope2');
+      GetIt.I.registerSingleton<String>('scope2-unnamed');
+
+      // Should find the unnamed registration from current scope (scope2)
+      final registration = GetIt.I.findFirstObjectRegistration<String>();
+      expect(registration, isNotNull);
+      expect(registration!.registeredWithType, String);
+      expect(registration.instanceName, null); // Unnamed
+
+      // Verify it found the current scope's instance
+      final instance = GetIt.I.get<String>();
+      expect(instance, 'scope2-unnamed');
+
+      // Pop scope2 and verify we now find scope1's instance
+      await GetIt.I.popScope();
+      final registration2 = GetIt.I.findFirstObjectRegistration<String>();
+      final instance2 = GetIt.I.get<String>();
+      expect(instance2, 'scope1-unnamed');
+      expect(registration2!.instanceName, null); // Still unnamed
+    });
   });
 }
