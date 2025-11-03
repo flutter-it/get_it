@@ -379,7 +379,9 @@ void main() {
       // getAll with fromAllScopes should return from all scopes
       final allScopeInstances = GetIt.I.getAll<TestClass>(fromAllScopes: true);
       expect(
-          allScopeInstances.length, 3); // One from each: base, scope1, scope2
+        allScopeInstances.length,
+        3,
+      ); // One from each: base, scope1, scope2
     });
 
     test('getAllAsync with onlyInScope parameter', () async {
