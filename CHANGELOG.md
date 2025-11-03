@@ -1,3 +1,7 @@
+## [9.0.3] - 2025-01-12
+
+* Fixed logo display on pub.dev by using relative path
+
 ## [9.0.2] - 2025-01-12
 
 * Fixed button sizing in README for pub.dev display
