@@ -1,4 +1,4 @@
-<img src="get_it.png" alt="get_it logo" width="150"/>
+<img src="https://github.com/flutter-it/get_it/blob/master/get_it.png?raw=true" alt="get_it logo" width="150"/>
 
 <div align="right" style="float: right;">
 <a href="https://www.buymeacoffee.com/escamoteur"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"/></a>
