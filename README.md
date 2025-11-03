@@ -1,12 +1,10 @@
-<p align="left">
-  <img src="https://github.com/flutter-it/get_it/blob/master/get_it.png?raw=true" alt="get_it logo" width="150"/>
-</p>
+<img align="left" src="https://github.com/flutter-it/get_it/blob/master/get_it.png?raw=true" alt="get_it logo" width="150"/>
 
-<p align="right">
-  <a href="https://www.buymeacoffee.com/escamoteur"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="50" width="217"/></a>
-  <br/>
-  <a href="https://github.com/sponsors/escamoteur"><img src="https://img.shields.io/badge/Sponsor-❤-ff69b4?style=for-the-badge" alt="Sponsor" height="40"/></a>
-</p>
+<a href="https://www.buymeacoffee.com/escamoteur"><img align="right" src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="50" width="217"/></a>
+
+<a href="https://github.com/sponsors/escamoteur"><img align="right" src="https://img.shields.io/badge/Sponsor-❤-ff69b4?style=for-the-badge" alt="Sponsor" height="40"/></a>
+
+<br clear="both"/>
 
 # get_it <a href="https://codecov.io/gh/flutter-it/get_it"><img align="right" src="https://codecov.io/gh/flutter-it/get_it/branch/master/graph/badge.svg?style=for-the-badge" alt="codecov" height="40"/></a>
 
