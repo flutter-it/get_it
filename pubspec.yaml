@@ -1,6 +1,6 @@
 name: get_it
 description: Simple direct Service Locator that allows to decouple the interface from a concrete implementation and  to access the concrete implementation from everywhere in your App"
-version: 9.0.3
+version: 9.0.4
 maintainer: Thomas Burkhart (@escamoteur)
 homepage: https://github.com/flutter-it/get_it
 repository: https://github.com/flutter-it/get_it
@@ -8,7 +8,7 @@ funding:
   - https://github.com/sponsors/escamoteur/
 
 screenshots:
-  - description: 'The get_it logo'
+  - description: 'get_it logo'
     path: get_it.png
 
 environment:

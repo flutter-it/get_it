@@ -1,3 +1,7 @@
+## [9.0.4] - 2025-01-12
+
+* Fixed screenshots description to match working 9.0.1 format
+
 ## [9.0.3] - 2025-01-12
 
 * Fixed logo display on pub.dev by using relative path
