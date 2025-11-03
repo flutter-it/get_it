@@ -1,4 +1,4 @@
-## [8.4.0] - BREAKING CHANGE
+## [9.0.0] - BREAKING CHANGE
 
 * **BREAKING**: Disposal order now always follows strict LIFO (Last-In-First-Out) based on registration order
   * Previously, disposal order was based on the order objects appeared in internal hash maps, which was unpredictable when mixing named and unnamed registrations

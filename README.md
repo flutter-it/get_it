@@ -1,8 +1,12 @@
-[![codecov](https://codecov.io/gh/flutter-it/get_it/branch/master/graph/badge.svg)](https://codecov.io/gh/flutter-it/get_it)
+<img src="get_it.png" alt="get_it logo" width="150"/>
 
-[:heart: Sponsor](https://github.com/sponsors/escamoteur) <a href="https://www.buymeacoffee.com/escamoteur" target="_blank"><img align="right" src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+<div align="right" style="float: right;">
+<a href="https://www.buymeacoffee.com/escamoteur"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"/></a>
+<br/>
+<a href="https://github.com/sponsors/escamoteur"><img src="https://img.shields.io/badge/Sponsor-❤-ff69b4?style=for-the-badge" alt="Sponsor"/></a>
+</div>
 
-# get_it
+# get_it <a href="https://codecov.io/gh/flutter-it/get_it"><img align="right" src="https://codecov.io/gh/flutter-it/get_it/branch/master/graph/badge.svg?style=for-the-badge" alt="codecov" height="28"/></a>
 
 > 📚 **[Complete documentation available at flutter-it.dev](https://flutter-it.dev)**
 > Check out the comprehensive docs with detailed guides, examples, and best practices!
