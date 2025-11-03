@@ -1,3 +1,7 @@
+## [9.0.1]
+
+* Fixed linter error (missing trailing comma in test file)
+
 ## [9.0.0] - BREAKING CHANGE
 
 * **BREAKING**: Disposal order now always follows strict LIFO (Last-In-First-Out) based on registration order
