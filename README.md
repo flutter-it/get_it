@@ -1,16 +1,14 @@
-<div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+<p align="left">
   <img src="https://github.com/flutter-it/get_it/blob/master/get_it.png?raw=true" alt="get_it logo" width="150"/>
-  <div style="text-align: right;">
-    <a href="https://www.buymeacoffee.com/escamoteur"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="50" width="217"/></a>
-    <br/>
-    <a href="https://github.com/sponsors/escamoteur"><img src="https://img.shields.io/badge/Sponsor-❤-ff69b4?style=for-the-badge" alt="Sponsor" height="40"/></a>
-  </div>
-</div>
+</p>
 
-<div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 20px;">
-  <h1 style="margin: 0;">get_it</h1>
-  <a href="https://codecov.io/gh/flutter-it/get_it"><img src="https://codecov.io/gh/flutter-it/get_it/branch/master/graph/badge.svg?style=for-the-badge" alt="codecov" height="40"/></a>
-</div>
+<p align="right">
+  <a href="https://www.buymeacoffee.com/escamoteur"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="50" width="217"/></a>
+  <br/>
+  <a href="https://github.com/sponsors/escamoteur"><img src="https://img.shields.io/badge/Sponsor-❤-ff69b4?style=for-the-badge" alt="Sponsor" height="40"/></a>
+</p>
+
+# get_it <a href="https://codecov.io/gh/flutter-it/get_it"><img align="right" src="https://codecov.io/gh/flutter-it/get_it/branch/master/graph/badge.svg?style=for-the-badge" alt="codecov" height="40"/></a>
 
 > 📚 **[Complete documentation available at flutter-it.dev](https://flutter-it.dev)**
 > Check out the comprehensive docs with detailed guides, examples, and best practices!
