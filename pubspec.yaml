@@ -7,10 +7,6 @@ repository: https://github.com/flutter-it/get_it
 funding:
   - https://github.com/sponsors/escamoteur/
 
-screenshots:
-  - description: 'get_it logo'
-    path: get_it.png
-
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
