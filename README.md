@@ -141,6 +141,29 @@ tearDown(() async {
 
 [Read testing guide →](https://flutter-it.dev/documentation/get_it/testing)
 
+### Flutter Widget Previews
+
+`get_it` works seamlessly with Flutter's widget previewer. Since previews run in isolation, you need to initialize `get_it` within the preview itself:
+
+```dart
+@Preview()
+Widget myPreview() {
+  if (!getIt.isRegistered<MyService>()) {
+    getIt.registerSingleton<MyService>(MockService());
+  }
+  return const MyWidget();
+}
+```
+
+Or use a reusable wrapper for automatic cleanup:
+
+```dart
+@Preview(name: 'My Widget', wrapper: myWrapper)
+Widget myPreview() => const MyWidget();
+```
+
+[Read Flutter previews guide →](https://flutter-it.dev/documentation/get_it/flutter_previews)
+
 ## Ecosystem Integration
 
 **get_it works independently** — use it standalone for dependency injection in any Dart or Flutter project.

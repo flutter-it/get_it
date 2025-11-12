@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_example/app_model.dart';
+import 'package:get_it_example/preview_wrapper.dart';
 
 // This is our global ServiceLocator
 GetIt getIt = GetIt.instance;
 
-void main() {
+void setupLocator() {
+  // Here you can register other dependencies if needed
   /// I use signalReady here only to show how to use it. In 99% of the cases
   /// you don't need it. Just use registerSingletonAsync
   getIt.registerSingleton<AppModel>(
     AppModelImplementation(),
     signalsReady: true,
   );
+}
 
+void main() {
+  setupLocator();
   runApp(const MyApp());
 }
 
@@ -105,3 +111,62 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+
+// ==============================================================================
+// Flutter Widget Preview Examples
+// ==============================================================================
+//
+// Flutter's widget previewer renders widgets in isolation, without running
+// main() or your normal app initialization. This means `get_it` won't be
+// initialized automatically. Below are two approaches to handle this:
+
+// ------------------------------------------------------------------------------
+// Approach 1: Direct Registration with isRegistered() Check
+// ------------------------------------------------------------------------------
+//
+// Use this for simple, one-off previews where you want maximum control.
+// The previewer may call this function multiple times, so we check if
+// the service is already registered before registering it again.
+
+@Preview()
+Widget preview() {
+  // Guard against double registration since preview functions
+  // can be called multiple times during hot reload
+  if (!getIt.isRegistered<AppModel>()) {
+    getIt.registerSingleton<AppModel>(
+      AppModelImplementation(),
+      signalsReady: true,
+    );
+  }
+  return const MyApp();
+}
+
+// ------------------------------------------------------------------------------
+// Approach 2: Wrapper Widget with Automatic Cleanup
+// ------------------------------------------------------------------------------
+//
+// Use this when you want automatic cleanup or need to reuse the same setup
+// across multiple previews. The wrapper handles initialization in initState
+// and cleanup via reset() in dispose.
+//
+// Uncomment the @Preview annotation to enable this preview:
+
+// @Preview(name: 'With GetIt Wrapper', wrapper: wrapper)
+Widget previewWithWrapper() => const MyApp();
+
+// Wrapper function (must be top-level or static for @Preview)
+Widget wrapper(Widget child) {
+  return GetItPreviewWrapper(
+    init: (getIt) {
+      // Register all preview dependencies here
+      getIt.registerSingleton<AppModel>(
+        AppModelImplementation(),
+        signalsReady: true,
+      );
+    },
+    child: child,
+  );
+}
+
+// Note: GetItPreviewWrapper is defined in preview_wrapper.dart
+// See that file for full documentation on how it works.
