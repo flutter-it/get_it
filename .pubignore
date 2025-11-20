@@ -159,7 +159,7 @@ fabric.properties
 
 ### AndroidStudio Patch ###
 
-!/gradle/wrapper/gradle-wrapper.jar
+# !/gradle/wrapper/gradle-wrapper.jar
 
 ### Flutter ###
 # Flutter/Dart/Pub related
@@ -171,11 +171,11 @@ fabric.properties
 .pub/
 
 # Android related
-**/android/**/gradle-wrapper.jar
+# **/android/**/gradle-wrapper.jar
 **/android/.gradle
 **/android/captures/
-**/android/gradlew
-**/android/gradlew.bat
+# **/android/gradlew
+# **/android/gradlew.bat
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 
