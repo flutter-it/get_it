@@ -17,6 +17,8 @@ void throwIfNot(bool condition, Object error) {
 const _isDebugMode = !bool.fromEnvironment('dart.vm.product') &&
     !bool.fromEnvironment('dart.vm.profile');
 
+bool _devToolsExtensionRegistered = false;
+
 void _debugOutput(Object message) {
   if (_isDebugMode) {
     if (!GetIt.noDebugOutput) {
@@ -549,33 +551,36 @@ class _GetItImplementation implements GetIt {
 
   _GetItImplementation() {
     assert(() {
-      registerExtension('ext.get_it.getRegistrations',
-          (method, parameters) async {
-        final registrations = <Map<String, dynamic>>[];
-        for (final scope in _scopes) {
-          for (final typeRegistration in scope.typeRegistrations.values) {
-            for (final registration in [
-              ...typeRegistration.registrations,
-              ...typeRegistration.namedRegistrations.values
-            ]) {
-              registrations.add({
-                'type': registration.registeredWithType.toString(),
-                'instanceName': registration.instanceName,
-                'scopeName': scope.name,
-                'registrationType': registration.registrationType.toString(),
-                'isAsync': registration.isAsync,
-                'isReady': registration.isReady,
-                'isCreated': registration.instance != null,
-                'instanceDetails': registration.instance != null
-                    ? _getInstanceDetails(registration.instance!)
-                    : null,
-              });
+      if (!_devToolsExtensionRegistered) {
+        _devToolsExtensionRegistered = true;
+        registerExtension('ext.get_it.getRegistrations',
+            (method, parameters) async {
+          final registrations = <Map<String, dynamic>>[];
+          for (final scope in _scopes) {
+            for (final typeRegistration in scope.typeRegistrations.values) {
+              for (final registration in [
+                ...typeRegistration.registrations,
+                ...typeRegistration.namedRegistrations.values
+              ]) {
+                registrations.add({
+                  'type': registration.registeredWithType.toString(),
+                  'instanceName': registration.instanceName,
+                  'scopeName': scope.name,
+                  'registrationType': registration.registrationType.toString(),
+                  'isAsync': registration.isAsync,
+                  'isReady': registration.isReady,
+                  'isCreated': registration.instance != null,
+                  'instanceDetails': registration.instance != null
+                      ? _getInstanceDetails(registration.instance!)
+                      : null,
+                });
+              }
             }
           }
-        }
-        return ServiceExtensionResponse.result(
-            jsonEncode({'registrations': registrations}));
-      });
+          return ServiceExtensionResponse.result(
+              jsonEncode({'registrations': registrations}));
+        });
+      }
       return true;
     }());
   }
