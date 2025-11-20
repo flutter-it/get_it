@@ -171,14 +171,8 @@ fabric.properties
 .pub/
 
 # Android related
-# **/android/**/gradle-wrapper.jar
 **/android/.gradle
 **/android/captures/
-# **/android/gradlew
-# **/android/gradlew.bat
-# !example/android/gradlew
-# !example/android/gradlew.bat
-# !example/android/gradle/wrapper/gradle-wrapper.jar
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 

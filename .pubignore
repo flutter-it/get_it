@@ -171,7 +171,7 @@ fabric.properties
 .pub/
 
 # Android related
-# **/android/**/gradle-wrapper.jar
+**/android/**/gradle-wrapper.jar
 **/android/.gradle
 **/android/captures/
 # **/android/gradlew
