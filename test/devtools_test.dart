@@ -33,16 +33,16 @@ void main() {
 
       // Unregister
       GetIt.I.unregister<String>();
-      
+
       // Reset
       await GetIt.I.reset();
     });
-    
+
     test('Service extension logic runs without error', () async {
-       // We can't easily invoke the extension here without VM Service, 
-       // but we can ensure the registration code in the constructor didn't crash.
-       // The constructor is called when we access GetIt.instance for the first time.
-       expect(GetIt.I, isNotNull);
+      // We can't easily invoke the extension here without VM Service,
+      // but we can ensure the registration code in the constructor didn't crash.
+      // The constructor is called when we access GetIt.instance for the first time.
+      expect(GetIt.I, isNotNull);
     });
   });
 }

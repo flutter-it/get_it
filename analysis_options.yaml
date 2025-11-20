@@ -1,7 +1,8 @@
 include: package:lint/analysis_options_package.yaml
 
-# analyzer:
-#   exclude:
+analyzer:
+  exclude:
+    - tool/get_it_devtools_extension/**
 
 formatter: 
   trailing_commas: preserve
