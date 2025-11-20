@@ -1,3 +1,12 @@
+## [9.1.0] - 2025-11-20
+
+* Added DevTools extension for visualizing and inspecting GetIt registrations
+  * View all registered objects with their type, scope, registration mode, and state
+  * See instance details via `toString()` output for created instances
+  * Manual refresh button to update the registration list
+  * Requires `debugEventsEnabled = true` to be set on GetIt instance
+  * See README for setup instructions
+
 ## [9.0.5] - 2025-01-12
 
 * Use absolute GitHub URL for logo in README

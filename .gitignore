@@ -487,4 +487,8 @@ android/local.properties
 example/ios/Flutter/flutter_export_environment.sh
 
 # code coverage files
+# code coverage files
 coverage
+
+# DevTools Extension
+!extension/devtools/build/

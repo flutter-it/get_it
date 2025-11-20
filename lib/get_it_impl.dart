@@ -538,7 +538,59 @@ class _GetItImplementation implements GetIt {
   /// Global registration number counter for tracking registration order
   int _registrationNumber = 0;
 
-  _GetItImplementation();
+  /// Helper method to safely get instance details via toString()
+  static String? _getInstanceDetails(Object instance) {
+    try {
+      return instance.toString();
+    } catch (e) {
+      return 'Error calling toString(): $e';
+    }
+  }
+
+  _GetItImplementation() {
+    assert(() {
+      registerExtension('ext.get_it.getRegistrations',
+          (method, parameters) async {
+        final registrations = <Map<String, dynamic>>[];
+        for (final scope in _scopes) {
+          for (final typeRegistration in scope.typeRegistrations.values) {
+            for (final registration in [
+              ...typeRegistration.registrations,
+              ...typeRegistration.namedRegistrations.values
+            ]) {
+              registrations.add({
+                'type': registration.registeredWithType.toString(),
+                'instanceName': registration.instanceName,
+                'scopeName': scope.name,
+                'registrationType': registration.registrationType.toString(),
+                'isAsync': registration.isAsync,
+                'isReady': registration.isReady,
+                'isCreated': registration.instance != null,
+                'instanceDetails': registration.instance != null
+                    ? _getInstanceDetails(registration.instance!)
+                    : null,
+              });
+            }
+          }
+        }
+        return ServiceExtensionResponse.result(
+            jsonEncode({'registrations': registrations}));
+      });
+      return true;
+    }());
+  }
+
+  @override
+  bool debugEventsEnabled = false;
+
+  void _fireDevToolEvent(String kind, Map<String, dynamic> parameters) {
+    assert(() {
+      if (debugEventsEnabled) {
+        postEvent('get_it.$kind', parameters);
+      }
+      return true;
+    }());
+  }
 
   @override
   void Function(bool pushed)? onScopeChanged;
@@ -1399,6 +1451,13 @@ class _GetItImplementation implements GetIt {
         }
       }
     }
+    assert(() {
+      _fireDevToolEvent('unregister', {
+        'type': T.toString(),
+        'instanceName': instanceName,
+      });
+      return true;
+    }());
   }
 
   /// In some cases it can be necessary to change the name of a registered instance
@@ -1595,6 +1654,10 @@ class _GetItImplementation implements GetIt {
     }
     _scopes.removeRange(1, _scopes.length);
     await resetScope(dispose: dispose);
+    assert(() {
+      _fireDevToolEvent('reset', {'dispose': dispose});
+      return true;
+    }());
   }
 
   /// Clears all registered types of the current scope in the reverse order in which they were registered.
@@ -1604,6 +1667,11 @@ class _GetItImplementation implements GetIt {
       await _currentScope.dispose();
     }
     await _currentScope.reset(dispose: dispose);
+    assert(() {
+      _fireDevToolEvent(
+          'resetScope', {'dispose': dispose, 'scopeName': _currentScope.name});
+      return true;
+    }());
   }
 
   /// Creates a new registration scope. If you register types after creating
@@ -1650,6 +1718,11 @@ class _GetItImplementation implements GetIt {
         _scopes.last.isFinal = true;
       }
       onScopeChanged?.call(true);
+      assert(() {
+        _fireDevToolEvent(
+            'scope_change', {'pushed': true, 'scopeName': scopeName});
+        return true;
+      }());
     } catch (e) {
       final failedScope = _scopes.last;
 
@@ -1708,6 +1781,11 @@ class _GetItImplementation implements GetIt {
         _scopes.last.isFinal = true;
       }
       onScopeChanged?.call(true);
+      assert(() {
+        _fireDevToolEvent(
+            'scope_change', {'pushed': true, 'scopeName': scopeName});
+        return true;
+      }());
     } catch (e) {
       final failedScope = _scopes.last;
 
@@ -1755,6 +1833,11 @@ class _GetItImplementation implements GetIt {
     await scopeToPop.reset(dispose: true);
     _scopes.remove(scopeToPop);
     onScopeChanged?.call(false);
+    assert(() {
+      _fireDevToolEvent(
+          'scope_change', {'pushed': false, 'scopeName': scopeToPop.name});
+      return true;
+    }());
   }
 
   /// if you have a lot of scopes with names you can pop (see [popScope]) all scopes above
@@ -2119,6 +2202,18 @@ class _GetItImplementation implements GetIt {
         return objectRegistration.instance!;
       });
     }
+    assert(() {
+      _fireDevToolEvent('register', {
+        'type': T.toString(),
+        'instanceName': instanceName,
+        'scopeName': registrationScope.name,
+        'registrationType': type.toString(),
+        'isAsync': isAsync,
+        'isReady': objectRegistration.isReady,
+        'isCreated': objectRegistration.instance != null,
+      });
+      return true;
+    }());
   }
 
   /// Used to manually signal the ready state of a Singleton.

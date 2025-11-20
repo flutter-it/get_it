@@ -4,6 +4,8 @@ library get_it;
 
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
+import 'dart:developer';
 
 import 'package:async/async.dart';
 import 'package:collection/collection.dart' show IterableExtension;
@@ -178,6 +180,9 @@ abstract class GetIt {
   // If this is set to true do not print errors
   // By default in release mode we don't print errors
   static bool noDebugOutput = false;
+
+  /// If you want to use the GetIt DevTools extension you have to set this to true
+  bool debugEventsEnabled = false;
 
   /// By default it's not allowed to register a type a second time.
   /// If you really need to you can disable the asserts by setting[allowReassignment]= true

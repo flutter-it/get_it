@@ -141,6 +141,46 @@ tearDown(() async {
 
 [Read testing guide →](https://flutter-it.dev/documentation/get_it/testing)
 
+### DevTools Extension
+
+get_it includes a DevTools extension that lets you visualize and inspect all registered objects in your running app:
+
+- **View all registrations** — See type, instance name, scope, registration mode, async status, ready state, and creation status
+- **Instance details** — View the `toString()` output of created instances to inspect their state
+- **Manual refresh** — Update the registration list anytime with the refresh button
+
+#### Setup
+
+1. **Enable debug events** in your app (typically in `main.dart`). This enables the extension to receive automatic updates when registrations change:
+   ```dart
+   void main() {
+     GetIt.instance.debugEventsEnabled = true;
+     // ... rest of your setup
+     runApp(MyApp());
+   }
+   ```
+
+2. **Run your app** in debug mode and open DevTools
+
+3. **Open DevTools in the browser** — The extension currently only works in the browser-based DevTools, not in the IDE-embedded version.
+
+4. **Enable the extension** — Click the **Extensions** button (puzzle piece icon) in the top right corner of DevTools and enable the `get_it` extension.
+
+5. **Find the "get_it" tab** — The extension will appear as a new tab in DevTools
+
+For more information on using DevTools extensions, see the [official Flutter DevTools documentation](https://docs.flutter.dev/tools/devtools/extensions).
+
+> **💡 Tip:** Override `toString()` in your registered classes to see meaningful details in the DevTools extension. By default, Dart's `toString()` only shows the type name and instance ID.
+
+```dart
+class UserRepository {
+  final String userId;
+  
+  @override
+  String toString() => 'UserRepository(userId: $userId)';
+}
+```
+
 ### Flutter Widget Previews
 
 `get_it` works seamlessly with Flutter's widget previewer. Since previews run in isolation, you need to initialize `get_it` within the preview itself:
