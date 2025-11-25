@@ -1,6 +1,6 @@
 {
-    "name": "example",
-    "short_name": "example",
+    "name": "get_it_example",
+    "short_name": "get_it_example",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -1,3 +1,7 @@
+## [9.1.1] - 2025-11-25
+
+* Updated example project
+
 ## [9.1.0] - 2025-11-20
 
 * Added DevTools extension for visualizing and inspecting GetIt registrations
