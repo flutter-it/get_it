@@ -1,3 +1,10 @@
+## [9.2.0] - 2025-12-03
+
+* `allReady()` now caches its Future and returns the same instance on repeated calls
+  * Cache is automatically invalidated when new async singletons are registered
+  * This enables watch_it to detect when async registrations change (e.g., after `pushNewScope`)
+* Fixed: pending async singletons now complete their ready completer when removed via `unregister()` or scope reset, allowing `allReady()` to complete properly
+
 ## [9.1.1] - 2025-11-25
 
 * Updated example project

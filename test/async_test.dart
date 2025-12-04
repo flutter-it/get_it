@@ -946,6 +946,84 @@ void main() {
       expect(instance.initCompleted, isTrue);
     });
   });
+
+  group('allReady caching', () {
+    test('allReady returns same Future on repeated calls', () async {
+      final getIt = GetIt.instance;
+      await getIt.reset();
+
+      getIt.registerSingletonAsync<TestClass>(
+        () => Future.delayed(const Duration(milliseconds: 10))
+            .then((_) => TestClass(internalCompletion: false)),
+      );
+
+      final future1 = getIt.allReady();
+      final future2 = getIt.allReady();
+
+      expect(identical(future1, future2), isTrue);
+
+      await future1;
+    });
+
+    test('allReady returns new Future after registerSingletonAsync', () async {
+      final getIt = GetIt.instance;
+      await getIt.reset();
+
+      getIt.registerSingletonAsync<TestClass>(
+        () => Future.delayed(const Duration(milliseconds: 10))
+            .then((_) => TestClass(internalCompletion: false)),
+      );
+
+      final future1 = getIt.allReady();
+      await future1;
+
+      // Register another async singleton
+      getIt.registerSingletonAsync<TestClass2>(
+        () => Future.delayed(const Duration(milliseconds: 10))
+            .then((_) => TestClass2(internalCompletion: false)),
+      );
+
+      final future2 = getIt.allReady();
+
+      // Should be a new future since we registered a new async singleton
+      expect(identical(future1, future2), isFalse);
+
+      await future2;
+    });
+
+    test(
+        'allReady returns new Future after pushNewScope with async registration',
+        () async {
+      final getIt = GetIt.instance;
+      await getIt.reset();
+
+      getIt.registerSingletonAsync<TestClass>(
+        () => Future.delayed(const Duration(milliseconds: 10))
+            .then((_) => TestClass(internalCompletion: false)),
+      );
+
+      final future1 = getIt.allReady();
+      await future1;
+
+      // Push a new scope with an async registration
+      getIt.pushNewScope(
+        init: (getIt) {
+          getIt.registerSingletonAsync<TestClass2>(
+            () => Future.delayed(const Duration(milliseconds: 10))
+                .then((_) => TestClass2(internalCompletion: false)),
+          );
+        },
+      );
+
+      final future2 = getIt.allReady();
+
+      // Should be a new future since we registered a new async singleton in the scope
+      expect(identical(future1, future2), isFalse);
+
+      await future2;
+      await getIt.popScope();
+    });
+  });
 }
 
 abstract class Service1 {}

@@ -447,6 +447,10 @@ class _Scope {
         ..sort((a, b) => b.registrationNumber.compareTo(a.registrationNumber));
 
       for (final registration in registrations) {
+        // Complete pending completers so allReady() can complete
+        if (!registration.isReady) {
+          registration._readyCompleter.complete();
+        }
         await registration.dispose();
       }
     }
@@ -603,6 +607,9 @@ class _GetItImplementation implements GetIt {
   /// We still support a global ready signal mechanism for that we use this
   /// Completer.
   final _globalReadyCompleter = Completer();
+
+  /// Cached allReady future - invalidated when new async singletons are registered
+  Future<void>? _cachedAllReadyFuture;
 
   /// By default it's not allowed to register a type a second time.
   /// If you really need to you can disable the asserts by setting[allowReassignment]= true
@@ -1430,6 +1437,12 @@ class _GetItImplementation implements GetIt {
       registrationToRemove._referenceCount--;
       return;
     }
+
+    // Complete pending completer so allReady() can complete
+    if (!registrationToRemove.isReady) {
+      registrationToRemove._readyCompleter.complete();
+    }
+
     final typeRegistration = registrationToRemove.registeredIn;
 
     if (registrationToRemove.isNamedRegistration) {
@@ -1659,6 +1672,7 @@ class _GetItImplementation implements GetIt {
     }
     _scopes.removeRange(1, _scopes.length);
     await resetScope(dispose: dispose);
+    _cachedAllReadyFuture = null;
     assert(() {
       _fireDevToolEvent('reset', {'dispose': dispose});
       return true;
@@ -2069,6 +2083,9 @@ class _GetItImplementation implements GetIt {
     // it is dependent on other registered Singletons.
     if ((isAsync || (dependsOn?.isNotEmpty ?? false)) &&
         type == ObjectRegistrationType.constant) {
+      // Invalidate allReady cache since a new async singleton affects allReady()
+      _cachedAllReadyFuture = null;
+
       /// Any client awaiting the completion of this Singleton
       /// Has to wait for the completion of the Singleton itself as well
       /// as for the completion of all the Singletons this one depends on
@@ -2305,6 +2322,17 @@ class _GetItImplementation implements GetIt {
     Duration? timeout,
     bool ignorePendingAsyncCreation = false,
   }) {
+    // Return cached future if available
+    if (_cachedAllReadyFuture != null) {
+      if (timeout != null) {
+        return _cachedAllReadyFuture!.timeout(
+          timeout,
+          onTimeout: () => throw _createTimeoutError(),
+        );
+      }
+      return _cachedAllReadyFuture!;
+    }
+
     final futures = FutureGroup();
     _allRegistrations
         .where(
@@ -2331,14 +2359,16 @@ class _GetItImplementation implements GetIt {
       }
     });
     futures.close();
+
+    _cachedAllReadyFuture = futures.future;
+
     if (timeout != null) {
-      return futures.future.timeout(
+      return _cachedAllReadyFuture!.timeout(
         timeout,
-        onTimeout: () async => throw _createTimeoutError(),
+        onTimeout: () => throw _createTimeoutError(),
       );
-    } else {
-      return futures.future;
     }
+    return _cachedAllReadyFuture!;
   }
 
   /// Returns if all async Singletons are ready without waiting
