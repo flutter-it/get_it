@@ -1,3 +1,11 @@
+---
+name: get-it-expert
+description: Expert guidance on get_it service locator and dependency injection for Flutter/Dart. Covers registration (singleton, factory, lazy, async), scopes with shadowing, async initialization with init() pattern, retrieval, testing with scope-based mocking, and production patterns. Use when working with get_it, dependency injection, service registration, scopes, or async initialization.
+metadata:
+  author: flutter-it
+  version: "1.0"
+---
+
 # get_it Expert - Service Locator & Dependency Injection
 
 **What**: Type-safe service locator with O(1) lookup. Register services globally, retrieve anywhere without BuildContext. Pure Dart, no code generation.
@@ -140,7 +148,7 @@ getIt.allReadySync();              // bool
 getIt.isReadySync<Database>();     // bool
 ```
 
-**UI integration**: Use `FutureBuilder` with `getIt.allReady()` to show a splash screen while async services initialize. If using watch_it, prefer its `allReady()` function inside a `WatchingWidget` instead (see watch_it skill).
+**UI integration**: Use `FutureBuilder` with `getIt.allReady()` to show a splash screen while async services initialize. If using watch_it, prefer its `allReady()` function inside a `WatchingWidget` instead (see watch-it-expert skill).
 
 ## Reference Counting
 

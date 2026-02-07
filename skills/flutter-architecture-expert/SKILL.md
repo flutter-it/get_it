@@ -1,3 +1,11 @@
+---
+name: flutter-architecture-expert
+description: Architecture guidance for Flutter apps using the flutter_it construction set (get_it, watch_it, command_it, listen_it). Covers Pragmatic Flutter Architecture (PFA) with Services/Managers/Views, feature-based project structure, manager pattern, proxy pattern with optimistic updates and override fields, DataRepository with reference counting, scoped services, widget granularity, testing, and best practices. Use when designing app architecture, structuring Flutter projects, implementing managers or proxies, or planning feature organization.
+metadata:
+  author: flutter-it
+  version: "1.0"
+---
+
 # flutter_it Architecture Expert - App Structure & Patterns
 
 **What**: Architecture guidance for Flutter apps using the flutter_it construction set (get_it + watch_it + command_it + listen_it).
@@ -338,15 +346,15 @@ abstract class DataRepository<T, TProxy extends DataProxy<T>, TId> {
 
 **Reference counting flow**:
 ```
-Feed creates ChatProxy(id=1) → refCount=1
-Page opens same proxy         → refCount=2
-Page closes, releases         → refCount=1 (proxy stays for feed)
-Feed refreshes, releases      → refCount=0 (proxy disposed)
+Feed creates ChatProxy(id=1) -> refCount=1
+Page opens same proxy         -> refCount=2
+Page closes, releases         -> refCount=1 (proxy stays for feed)
+Feed refreshes, releases      -> refCount=0 (proxy disposed)
 ```
 
 ## Feed/DataSource Pattern
 
-For paginated lists and infinite scroll, see the dedicated `/skills/feed-datasource-expert.md` skill. Key concepts: `FeedDataSource<TItem>` (non-paged) and `PagedFeedDataSource<TItem>` (cursor-based pagination) with separate Commands for initial load vs pagination, auto-pagination at `items.length - 3`, and proxy reference counting on refresh.
+For paginated lists and infinite scroll, see the dedicated `feed-datasource-expert` skill. Key concepts: `FeedDataSource<TItem>` (non-paged) and `PagedFeedDataSource<TItem>` (cursor-based pagination) with separate Commands for initial load vs pagination, auto-pagination at `items.length - 3`, and proxy reference counting on refresh.
 
 ## Widget Granularity
 
@@ -379,7 +387,7 @@ class _Counter extends WatchingWidget {
 // Result: user change only rebuilds _Header, count change only rebuilds _Counter
 ```
 
-**Note**: When working with Listenable, ValueListenable, ChangeNotifier, or ValueNotifier, check the listen_it skill for `listen()` and reactive operators (map, debounce, where, etc.).
+**Note**: When working with Listenable, ValueListenable, ChangeNotifier, or ValueNotifier, check the listen-it-expert skill for `listen()` and reactive operators (map, debounce, where, etc.).
 
 ## Testing
 
