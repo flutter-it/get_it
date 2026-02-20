@@ -1,3 +1,8 @@
+## [9.2.1] - 2026-02-19
+
+* Added AI skill files in `skills/` directory for AI coding assistants
+* Added AI-Assisted Development section to README
+
 ## [9.2.0] - 2025-12-03
 
 * `allReady()` now caches its Future and returns the same instance on repeated calls
