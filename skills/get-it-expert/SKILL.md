@@ -243,3 +243,19 @@ Future<void> setupThrowableScope() async {
 await di.popScopesTill('throwableScope', inclusive: true);
 await setupThrowableScope();
 ```
+
+**Logout / scope cleanup** — use `popScopesTill` to pop multiple scopes at once instead of manually checking and popping each one:
+```dart
+// ❌ Manual scope-by-scope popping
+void onLogout() {
+  if (di.hasScope('chat')) di.popScope();
+  if (di.hasScope('auth')) di.popScope();
+}
+
+// ✅ Use popScopesTill to pop everything above (and including) the auth scope
+Future<void> onLogout() async {
+  if (di.hasScope('auth')) {
+    await di.popScopesTill('auth', inclusive: true);
+  }
+}
+```

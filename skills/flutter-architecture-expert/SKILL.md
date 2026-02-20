@@ -412,16 +412,203 @@ class MyService {
 // Test: MyService(api: MockApiClient())
 ```
 
+## Manager init() vs Commands
+
+Manager `init()` loads initial data via **direct API calls**, not through commands. Commands are the **UI-facing reactive interface** — widgets watch their `isRunning`, `errors`, and `results`. Don't route init through commands:
+
+```dart
+class MyManager {
+  final items = ValueNotifier<List<Item>>([]);
+
+  // Command for UI-triggered refresh (widget watches isRunning)
+  late final loadCommand = Command.createAsyncNoParam<List<Item>>(
+    () async {
+      final result = await di<ApiClient>().getItems();
+      items.value = result;
+      return result;
+    },
+    initialValue: [],
+  );
+
+  // init() calls API directly — no command needed
+  Future<MyManager> init() async {
+    items.value = await di<ApiClient>().getItems();
+    return this;
+  }
+}
+```
+
+**Don't nest commands**: If a command needs to reload data after mutation, call the API directly inside the command body — don't call another command's `run()`:
+
+```dart
+// ✅ Direct API call inside command
+late final deleteCommand = Command.createAsync<int, bool>((id) async {
+  final result = await di<ApiClient>().delete(id);
+  items.value = await di<ApiClient>().getItems(); // reload directly
+  return result;
+}, initialValue: false);
+
+// ❌ Don't call another command from inside a command
+late final deleteCommand = Command.createAsync<int, bool>((id) async {
+  final result = await di<ApiClient>().delete(id);
+  loadCommand.run(); // WRONG — nesting commands
+  return result;
+}, initialValue: false);
+```
+
+## Reacting to Command Results
+
+**In WatchingWidgets**: Use `registerHandler` on command results for side effects (navigation, dialogs). Never use `addListener` or `runAsync()`:
+
+```dart
+class MyPage extends WatchingWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isRunning = watchValue((MyManager m) => m.createCommand.isRunning);
+
+    // React to result — navigate on success
+    registerHandler(
+      select: (MyManager m) => m.createCommand.results,
+      handler: (context, result, cancel) {
+        if (result.hasData && result.data != null) {
+          appPath.push(DetailRoute(id: result.data!.id));
+        }
+      },
+    );
+
+    return ElevatedButton(
+      onPressed: isRunning ? null : () => di<MyManager>().createCommand.run(params),
+      child: isRunning ? CircularProgressIndicator() : Text('Create'),
+    );
+  }
+}
+```
+
+**Outside widgets** (managers, services): Use listen_it `listen()` instead of raw `addListener` — it returns a `ListenableSubscription` for easy cancellation:
+
+```dart
+_subscription = someCommand.results.listen((result, subscription) {
+  if (result.hasData) doSomething(result.data);
+});
+// later: _subscription.cancel();
+```
+
+## Where allReady() Belongs
+
+`allReady()` belongs in the **UI** (WatchingWidget), not in imperative code. The root widget's `allReady()` shows a loading indicator until all async singletons (including newly pushed scopes) are ready:
+
+```dart
+// ✅ UI handles loading state
+class MyApp extends WatchingWidget {
+  @override
+  Widget build(BuildContext context) {
+    if (!allReady()) return LoadingScreen();
+    return MainApp();
+  }
+}
+
+// ✅ Push scope, let UI react
+Future<void> onAuthenticated(Client client) async {
+  di.pushNewScope(scopeName: 'auth', init: (scope) {
+    scope.registerSingleton<Client>(client);
+    scope.registerSingletonAsync<MyManager>(() => MyManager().init(), dependsOn: [Client]);
+  });
+  // No await di.allReady() here — UI handles it
+}
+```
+
+## Error Handling
+
+Three layers: **InteractionManager** (toast abstraction), **global handler** (catch-all), **local listeners** (custom messages).
+
+### InteractionManager
+
+A sync singleton registered before async services. Abstracts user-facing feedback (toasts, future dialogs). Receives a `BuildContext` via a connector widget so it can show context-dependent UI without threading context through managers:
+
+```dart
+class InteractionManager {
+  BuildContext? _context;
+
+  void setContext(BuildContext context) => _context = context;
+
+  BuildContext? get stableContext {
+    final ctx = _context;
+    if (ctx != null && ctx.mounted) return ctx;
+    return null;
+  }
+
+  void showToast(String message, {bool isError = false}) {
+    Fluttertoast.showToast(msg: message, ...);
+  }
+}
+
+// Connector widget — wrap around app content inside MaterialApp
+class InteractionConnector extends StatefulWidget { ... }
+class _InteractionConnectorState extends State<InteractionConnector> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    di<InteractionManager>().setContext(context);
+  }
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+```
+
+Register sync in base scope (before async singletons):
+```dart
+di.registerSingleton<InteractionManager>(InteractionManager());
+```
+
+### Global Exception Handler
+
+A static method on your app coordinator (e.g. `TheApp`), assigned to `Command.globalExceptionHandler` in `main()`. Catches any command error that has no local `.errors` listener (default `ErrorReaction.firstLocalThenGlobalHandler`):
+
+```dart
+// In TheApp
+static void globalErrorHandler(CommandError error, StackTrace stackTrace) {
+  debugPrint('Command error [${error.commandName}]: ${error.error}');
+  di<InteractionManager>().showToast(error.error.toString(), isError: true);
+}
+
+// In main()
+Command.globalExceptionHandler = TheApp.globalErrorHandler;
+```
+
+### Local Error Listeners
+
+For commands where you want a user-friendly message instead of the raw exception, add `.errors.listen()` (listen_it) in the manager's `init()`. These suppress the global handler:
+
+```dart
+Future<MyManager> init() async {
+  final interaction = di<InteractionManager>();
+  startSessionCommand.errors.listen((error, _) {
+    interaction.showToast('Could not start session', isError: true);
+  });
+  submitOutcomeCommand.errors.listen((error, _) {
+    interaction.showToast('Could not submit outcome', isError: true);
+  });
+  // ... load initial data
+  return this;
+}
+```
+
+**Flow**: Command fails → ErrorFilter (default: `firstLocalThenGlobalHandler`) → if local `.errors` has listeners, only they fire → if no local listeners, global handler fires → toast shown.
+
 ## Best Practices
 
 - Register all services before `runApp()`
-- Use `allReady()` with watch_it or FutureBuilder for async services
+- Use `allReady()` in WatchingWidgets for async service loading — not in imperative code
 - Break UI into small WatchingWidgets (only watch what you need)
 - Use managers (ChangeNotifier/ValueNotifier subclasses) for state
-- Use commands for async operations with loading/error states
+- Use commands for UI-triggered async operations with loading/error states
+- Manager `init()` calls APIs directly, commands are for UI interaction
+- Don't nest commands — use direct API calls for internal logic
 - Use scopes for user sessions and resettable services
 - Use `createOnce()` for widget-local disposable objects
-- Use `registerHandler()` for side effects (dialogs, navigation, snackbars)
+- Use `registerHandler()` for side effects in widgets (dialogs, navigation, snackbars)
+- Use listen_it `listen()` for side effects outside widgets (managers, services)
+- Never use raw `addListener` — use `registerHandler` (widgets) or `listen()` (non-widgets)
 - Use `run()` not `execute()` on commands
 - Use proxies to wrap DTOs with reactive behavior (commands, computed properties, change notification)
 - Use DataRepository with reference counting when same entity appears in multiple places
