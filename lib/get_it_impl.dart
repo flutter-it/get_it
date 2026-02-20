@@ -1505,9 +1505,8 @@ class _GetItImplementation implements GetIt {
         ? _findRegistrationByInstance(instance)
         : _findRegistrationByNameAndType<T>(instanceName);
 
-    if (instance != null) {
-      instanceName = registrationToRename.instanceName;
-    }
+    final resolvedInstanceName =
+        instance != null ? registrationToRename.instanceName : instanceName;
 
     throwIfNot(
       registrationToRename.isNamedRegistration,
@@ -1523,7 +1522,7 @@ class _GetItImplementation implements GetIt {
     );
 
     typeRegistration.namedRegistrations[newInstanceName] = registrationToRename;
-    typeRegistration.namedRegistrations.remove(instanceName);
+    typeRegistration.namedRegistrations.remove(resolvedInstanceName);
     registrationToRename.instanceName = newInstanceName;
   }
 
