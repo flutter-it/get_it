@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   devtools_extensions: ^0.4.0
   devtools_app_shared: ^0.4.0
+  vm_service: ^15.0.2
 
 dev_dependencies:
   flutter_test:
