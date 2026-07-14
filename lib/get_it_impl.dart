@@ -99,6 +99,11 @@ class _ObjectRegistration<T extends Object, P1, P2>
   /// they are stored here
   final List<Type> objectsWaiting = [];
 
+  /// True while [creationFunction] / async factory for this registration is
+  /// running. Used to fail fast on circular self-resolution (e.g. registering
+  /// `getIt.call` as a factory for `T`, which re-enters `get<T>()`).
+  bool _creationInProgress = false;
+
   @override
   bool get isReady => _readyCompleter.isCompleted;
 
@@ -213,6 +218,48 @@ class _ObjectRegistration<T extends Object, P1, P2>
     }
   }
 
+  Never _throwCircularSelfResolution() {
+    final named =
+        instanceName != null ? ' (instanceName: "$instanceName")' : '';
+    throw StateError(
+      'GetIt: Circular dependency detected while creating $registeredWithType$named.\n'
+      'This often happens when registering with an untyped tear-off of get/call, e.g.:\n'
+      '  getIt.registerLazySingleton<Iface>(getIt.call);\n'
+      'which re-enters get<$registeredWithType>() and recurses until StackOverflowError.\n'
+      'Use an explicit factory that constructs or resolves a concrete type, e.g.:\n'
+      '  getIt.registerLazySingleton<Iface>(() => getIt<Impl>());\n'
+      'or a named function tear-off that keeps the concrete type argument.',
+    );
+  }
+
+  T _runCreation(T Function() create) {
+    if (_creationInProgress) {
+      _throwCircularSelfResolution();
+    }
+    _creationInProgress = true;
+    try {
+      return create();
+    } finally {
+      _creationInProgress = false;
+    }
+  }
+
+  Future<T> _runCreationAsync(Future<T> Function() create) {
+    if (_creationInProgress) {
+      _throwCircularSelfResolution();
+    }
+    _creationInProgress = true;
+    try {
+      final future = create();
+      return future.whenComplete(() {
+        _creationInProgress = false;
+      });
+    } catch (_) {
+      _creationInProgress = false;
+      rethrow;
+    }
+  }
+
   /// returns an instance depending on the type of the registration if [async==false]
   T getObject(dynamic param1, dynamic param2) {
     assert(
@@ -230,9 +277,11 @@ class _ObjectRegistration<T extends Object, P1, P2>
           if (creationFunctionParam != null) {
             // Validate parameters in debug mode
             _validateFactoryParams(param1, param2);
-            return creationFunctionParam!(param1 as P1, param2 as P2);
+            return _runCreation(
+              () => creationFunctionParam!(param1 as P1, param2 as P2),
+            );
           } else {
-            return creationFunction!();
+            return _runCreation(creationFunction!);
           }
         case ObjectRegistrationType.cachedFactory:
           if (weakReferenceInstance?.target != null &&
@@ -240,16 +289,17 @@ class _ObjectRegistration<T extends Object, P1, P2>
               param2 == lastParam2) {
             return weakReferenceInstance!.target!;
           } else {
-            T newInstance;
-            if (creationFunctionParam != null) {
-              // Validate parameters in debug mode BEFORE casting
-              _validateFactoryParams(param1, param2);
-              lastParam1 = param1 as P1?;
-              lastParam2 = param2 as P2?;
-              newInstance = creationFunctionParam!(param1 as P1, param2 as P2);
-            } else {
-              newInstance = creationFunction!();
-            }
+            final T newInstance = _runCreation(() {
+              if (creationFunctionParam != null) {
+                // Validate parameters in debug mode BEFORE casting
+                _validateFactoryParams(param1, param2);
+                lastParam1 = param1 as P1?;
+                lastParam2 = param2 as P2?;
+                return creationFunctionParam!(param1 as P1, param2 as P2);
+              } else {
+                return creationFunction!();
+              }
+            });
             weakReferenceInstance = WeakReference(newInstance);
             return newInstance;
           }
@@ -257,15 +307,18 @@ class _ObjectRegistration<T extends Object, P1, P2>
           return instance!;
         case ObjectRegistrationType.lazy:
           if (instance == null) {
-            if (useWeakReference) {
-              if (weakReferenceInstance != null) {
-                /// this means that the instance was already created and disposed
-                _readyCompleter = Completer();
+            _runCreation(() {
+              if (useWeakReference) {
+                if (weakReferenceInstance != null) {
+                  /// this means that the instance was already created and disposed
+                  _readyCompleter = Completer();
+                }
+                weakReferenceInstance = WeakReference(creationFunction!());
+              } else {
+                _instance = creationFunction!();
               }
-              weakReferenceInstance = WeakReference(creationFunction!());
-            } else {
-              _instance = creationFunction!();
-            }
+              return instance!;
+            });
             objectsWaiting.clear();
             _readyCompleter.complete();
 
@@ -290,8 +343,14 @@ class _ObjectRegistration<T extends Object, P1, P2>
           return instance!;
       }
     } catch (e, s) {
-      _debugOutput('Error while creating $T');
-      _debugOutput('Stack trace:\n $s');
+      // Only build/print the stack when debug output is enabled. Eagerly
+      // interpolating `$s` can amplify StackOverflowError into native crashes.
+      if (_isDebugMode && !GetIt.noDebugOutput) {
+        // ignore: avoid_print
+        print('Error while creating $T');
+        // ignore: avoid_print
+        print('Stack trace:\n $s');
+      }
       rethrow;
     }
   }
@@ -321,10 +380,11 @@ class _ObjectRegistration<T extends Object, P1, P2>
           if (asyncCreationFunctionParam != null) {
             // Validate parameters in debug mode
             _validateFactoryParams(param1, param2);
-            return asyncCreationFunctionParam!(param1 as P1, param2 as P2)
-                as Future<R>;
+            return _runCreationAsync(
+              () => asyncCreationFunctionParam!(param1 as P1, param2 as P2),
+            ) as Future<R>;
           } else {
-            return asyncCreationFunction!() as Future<R>;
+            return _runCreationAsync(asyncCreationFunction!) as Future<R>;
           }
         case ObjectRegistrationType.cachedFactory:
           if (weakReferenceInstance?.target != null &&
@@ -332,24 +392,26 @@ class _ObjectRegistration<T extends Object, P1, P2>
               param2 == lastParam2) {
             return Future<R>.value(weakReferenceInstance!.target! as R);
           } else {
-            if (asyncCreationFunctionParam != null) {
-              // Validate parameters in debug mode BEFORE casting
-              _validateFactoryParams(param1, param2);
-              lastParam1 = param1 as P1?;
-              lastParam2 = param2 as P2?;
-              return asyncCreationFunctionParam!(
-                param1 as P1,
-                param2 as P2,
-              ).then((value) {
-                weakReferenceInstance = WeakReference(value);
-                return value;
-              }) as Future<R>;
-            } else {
-              return asyncCreationFunction!().then((value) {
-                weakReferenceInstance = WeakReference(value);
-                return value;
-              }) as Future<R>;
-            }
+            return _runCreationAsync(() {
+              if (asyncCreationFunctionParam != null) {
+                // Validate parameters in debug mode BEFORE casting
+                _validateFactoryParams(param1, param2);
+                lastParam1 = param1 as P1?;
+                lastParam2 = param2 as P2?;
+                return asyncCreationFunctionParam!(
+                  param1 as P1,
+                  param2 as P2,
+                ).then((value) {
+                  weakReferenceInstance = WeakReference(value);
+                  return value;
+                });
+              } else {
+                return asyncCreationFunction!().then((value) {
+                  weakReferenceInstance = WeakReference(value);
+                  return value;
+                });
+              }
+            }) as Future<R>;
           }
         case ObjectRegistrationType.constant:
           if (instance != null) {
@@ -369,47 +431,63 @@ class _ObjectRegistration<T extends Object, P1, P2>
               return pendingResult! as Future<R>;
             }
 
+            if (_creationInProgress) {
+              _throwCircularSelfResolution();
+            }
+            _creationInProgress = true;
+
             /// Seems this is really the first access to this async Singleton
-            final asyncResult = asyncCreationFunction!();
+            try {
+              final asyncResult = asyncCreationFunction!();
 
-            pendingResult = asyncResult.then((newInstance) {
-              if (!shouldSignalReady) {
-                /// only complete automatically if the registration wasn't marked with
-                /// [signalsReady==true]
-                _readyCompleter.complete();
-                objectsWaiting.clear();
-              }
-              if (useWeakReference) {
-                weakReferenceInstance = WeakReference(newInstance);
-              } else {
-                _instance = newInstance;
-              }
+              pendingResult = asyncResult.then((newInstance) {
+                if (!shouldSignalReady) {
+                  /// only complete automatically if the registration wasn't marked with
+                  /// [signalsReady==true]
+                  _readyCompleter.complete();
+                  objectsWaiting.clear();
+                }
+                if (useWeakReference) {
+                  weakReferenceInstance = WeakReference(newInstance);
+                } else {
+                  _instance = newInstance;
+                }
 
-              // Call onCreated callback if provided
-              onCreatedCallback?.call(newInstance);
+                // Call onCreated callback if provided
+                onCreatedCallback?.call(newInstance);
 
-              /// check if we are shadowing an existing Object
-              final registrationThatWouldbeShadowed =
-                  _getItInstance._findFirstRegistrationByNameAndTypeOrNull(
-                instanceName,
-                type: T,
-                lookInScopeBelow: true,
-              );
+                /// check if we are shadowing an existing Object
+                final registrationThatWouldbeShadowed =
+                    _getItInstance._findFirstRegistrationByNameAndTypeOrNull(
+                  instanceName,
+                  type: T,
+                  lookInScopeBelow: true,
+                );
 
-              final objectThatWouldbeShadowed =
-                  registrationThatWouldbeShadowed?.instance;
-              if (objectThatWouldbeShadowed != null &&
-                  objectThatWouldbeShadowed is ShadowChangeHandlers) {
-                objectThatWouldbeShadowed.onGetShadowed(instance!);
-              }
-              return newInstance;
-            });
-            return pendingResult! as Future<R>;
+                final objectThatWouldbeShadowed =
+                    registrationThatWouldbeShadowed?.instance;
+                if (objectThatWouldbeShadowed != null &&
+                    objectThatWouldbeShadowed is ShadowChangeHandlers) {
+                  objectThatWouldbeShadowed.onGetShadowed(instance!);
+                }
+                return newInstance;
+              }).whenComplete(() {
+                _creationInProgress = false;
+              });
+              return pendingResult! as Future<R>;
+            } catch (_) {
+              _creationInProgress = false;
+              rethrow;
+            }
           }
       }
     } catch (e, s) {
-      _debugOutput('Error while creating $T}');
-      _debugOutput('Stack trace:\n $s');
+      if (_isDebugMode && !GetIt.noDebugOutput) {
+        // ignore: avoid_print
+        print('Error while creating $T');
+        // ignore: avoid_print
+        print('Stack trace:\n $s');
+      }
       rethrow;
     }
   }
