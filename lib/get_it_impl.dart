@@ -244,19 +244,18 @@ class _ObjectRegistration<T extends Object, P1, P2>
     }
   }
 
+  /// Guards only the synchronous call that starts creation. Cleared when the
+  /// factory returns a [Future], not when that Future completes — so overlapping
+  /// [getAsync] on always-new / cached factories stay valid.
   Future<T> _runCreationAsync(Future<T> Function() create) {
     if (_creationInProgress) {
       _throwCircularSelfResolution();
     }
     _creationInProgress = true;
     try {
-      final future = create();
-      return future.whenComplete(() {
-        _creationInProgress = false;
-      });
-    } catch (_) {
+      return create();
+    } finally {
       _creationInProgress = false;
-      rethrow;
     }
   }
 

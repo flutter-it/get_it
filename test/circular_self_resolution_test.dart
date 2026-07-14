@@ -82,4 +82,62 @@ void main() {
       );
     },
   );
+
+  test(
+    'overlapping getAsync on same async factory succeeds',
+    () async {
+      var creates = 0;
+      getIt.registerFactoryAsync<Impl>(() async {
+        creates++;
+        await Future<void>.delayed(Duration.zero);
+        return Impl();
+      });
+
+      final results = await Future.wait([
+        getIt.getAsync<Impl>(),
+        getIt.getAsync<Impl>(),
+      ]);
+
+      expect(results, hasLength(2));
+      expect(results[0], isA<Impl>());
+      expect(results[1], isA<Impl>());
+      expect(creates, 2);
+    },
+  );
+
+  test(
+    'async factory that re-gets same type throws circular error',
+    () async {
+      getIt.registerFactoryAsync<Iface>(() => getIt.getAsync<Iface>());
+
+      await expectLater(
+        getIt.getAsync<Iface>(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('Circular dependency detected'),
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'async lazy singleton registered with getIt.getAsync throws circular error',
+    () async {
+      getIt.registerLazySingletonAsync<Iface>(() => getIt.getAsync<Iface>());
+
+      await expectLater(
+        getIt.getAsync<Iface>(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('Circular dependency detected'),
+          ),
+        ),
+      );
+    },
+  );
 }
