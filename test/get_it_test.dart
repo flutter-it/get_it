@@ -1151,6 +1151,60 @@ void main() {
       throwsStateError,
     );
   });
+
+  test('unregister throws by default if not registered', () async {
+    final getIt = GetIt.instance;
+
+    await expectLater(getIt.unregister<TestClass>(), throwsStateError);
+
+    getIt.registerSingleton<TestClass>(TestClass());
+    await getIt.unregister<TestClass>();
+
+    await expectLater(getIt.unregister<TestClass>(), throwsStateError);
+  });
+
+  test('unregister ignoreIfNotRegistered no-ops if missing', () async {
+    final getIt = GetIt.instance;
+    disposeCounter = 0;
+
+    await getIt.unregister<TestClass>(ignoreIfNotRegistered: true);
+
+    getIt.registerSingleton<TestClass>(
+      TestClass(),
+      dispose: (testClass) {
+        testClass.dispose();
+      },
+    );
+
+    await getIt.unregister<TestClass>();
+    expect(disposeCounter, 1);
+    expect(getIt.isRegistered<TestClass>(), isFalse);
+
+    await getIt.unregister<TestClass>(ignoreIfNotRegistered: true);
+    expect(disposeCounter, 1);
+    expect(getIt.isRegistered<TestClass>(), isFalse);
+  });
+
+  test('unregister ignoreIfNotRegistered by instance no-ops if missing',
+      () async {
+    final getIt = GetIt.instance;
+    final instance = TestClass();
+
+    await getIt.unregister(
+      instance: instance,
+      ignoreIfNotRegistered: true,
+    );
+
+    getIt.registerSingleton<TestClass>(instance);
+    await getIt.unregister(instance: instance);
+
+    await getIt.unregister(
+      instance: instance,
+      ignoreIfNotRegistered: true,
+    );
+    expect(getIt.isRegistered<TestClass>(), isFalse);
+  });
+
   test('change registration name with type and name', () async {
     final getIt = GetIt.instance;
     disposeCounter = 0;

@@ -801,11 +801,14 @@ abstract class GetIt {
   /// if referenceCount is 0
   /// [ignoreReferenceCount] if `true` it will ignore the reference count and unregister the object
   /// only use this if you know what you are doing
+  /// [ignoreIfNotRegistered] if `true` a missing registration is a no-op instead of
+  /// throwing. Defaults to `false` so a second dispose still surfaces a logic error.
   FutureOr unregister<T extends Object>({
     Object? instance,
     String? instanceName,
     FutureOr Function(T)? disposingFunction,
     bool ignoreReferenceCount = false,
+    bool ignoreIfNotRegistered = false,
   });
 
   /// returns a Future that completes if all asynchronously created Singletons and any

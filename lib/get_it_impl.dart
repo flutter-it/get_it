@@ -1414,6 +1414,8 @@ class _GetItImplementation implements GetIt {
   /// If you have provided an disposing function when you registered the object that one will be called automatically
   /// If you have enabled reference counting when registering, [unregister] will only unregister and dispose the object
   /// if referenceCount is 0
+  /// [ignoreIfNotRegistered] if `true` a missing registration is a no-op instead of
+  /// throwing. Defaults to `false`.
   ///
   @override
   FutureOr unregister<T extends Object>({
@@ -1421,10 +1423,22 @@ class _GetItImplementation implements GetIt {
     String? instanceName,
     FutureOr Function(T)? disposingFunction,
     bool ignoreReferenceCount = false,
+    bool ignoreIfNotRegistered = false,
   }) async {
-    final registrationToRemove = instance != null
-        ? _findRegistrationByInstance(instance)
-        : _findRegistrationByNameAndType<T>(instanceName);
+    final _ObjectRegistration? registrationToRemove;
+    if (instance != null) {
+      registrationToRemove = ignoreIfNotRegistered
+          ? _findFirstRegistrationByInstanceOrNull(instance)
+          : _findRegistrationByInstance(instance);
+    } else {
+      registrationToRemove = ignoreIfNotRegistered
+          ? _findFirstRegistrationByNameAndTypeOrNull<T>(instanceName)
+          : _findRegistrationByNameAndType<T>(instanceName);
+    }
+
+    if (registrationToRemove == null) {
+      return;
+    }
 
     throwIf(
       registrationToRemove.objectsWaiting.isNotEmpty,
