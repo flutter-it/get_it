@@ -498,3 +498,4 @@ coverage
 
 # Ignore extension source for pub publish
 tool/get_it_devtools_extension/
+extension/
