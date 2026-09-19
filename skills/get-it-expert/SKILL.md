@@ -19,6 +19,7 @@ metadata:
 - Dispose callbacks are a parameter on registration methods, not separate methods
 - Once async singletons are initialized (after `allReady()`), access them with normal `getIt<T>()` - no `getAsync` needed
 - If using watch_it, a global `di` alias for `GetIt.I` is already provided - use `di<T>()` instead of `getIt<T>()`
+- NEVER register an untyped tear-off as a factory: `registerLazySingleton<Iface>(getIt.call)` re-enters `get<Iface>()`. Since 9.3.0 lazy singletons (sync/async) and cached factories throw a descriptive `StateError` for circular self-resolution instead of a StackOverflowError; plain factories are not guarded (recursive factories are legitimate). Use `() => getIt<Impl>()`
 
 ## Registration
 
@@ -44,6 +45,12 @@ void configureDependencies() {
   // Factory with parameters
   getIt.registerFactoryParam<Logger, String, void>(
     (tag, _) => Logger(tag),
+  );
+
+  // Cached factory with parameters - same params return the same instance
+  // while it is still referenced (weak reference); watchable with watch_it 2.5.0+
+  getIt.registerCachedFactoryParam<StationManager, String, void>(
+    (id, _) => StationManager(id),
   );
 
   // Named instances - use when registering multiple instances of the same type
@@ -167,6 +174,7 @@ getIt.releaseInstance<PageData>(ignoreReferenceCount: false);
 ```dart
 getIt.isRegistered<ApiClient>();                       // bool
 getIt.unregister<ApiClient>();                         // remove registration
+getIt.skipUnregisterIfNotRegistered = true; // global: unregister of a missing registration is a no-op instead of throwing (v9.3.0+, default false; mirrors skipDoubleRegistration)
 getIt.resetLazySingleton<Database>();                  // recreate on next access
 getIt.resetLazySingletons(inAllScopes: true);          // bulk reset
 getIt.checkLazySingletonInstanceExists<Database>();    // is it instantiated?
@@ -174,6 +182,8 @@ getIt.reset();                                         // clear everything (for 
 getIt.allowReassignment = true;                        // allow overwriting registrations
 getIt.enableRegisteringMultipleInstancesOfOneType();   // allow unnamed multiples
 ```
+
+`findFirstObjectRegistration<T>()` returns an `ObjectRegistration` with `registrationType`, `isAsync`, `acceptsParams` (v9.3.0+: true for `registerFactoryParam`/`registerCachedFactoryParam` and async variants). Passing `param1`/`param2` to a registration with `acceptsParams == false` fails an assert in debug.
 
 ## Anti-Patterns
 

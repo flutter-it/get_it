@@ -489,3 +489,6 @@ coverage
 
 # DevTools Extension
 !extension/devtools/build/
+
+# Library package: lock file is not committed (https://dart.dev/tools/pub/private-files)
+/pubspec.lock

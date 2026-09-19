@@ -119,6 +119,10 @@ class _ObjectRegistration<T extends Object, P1, P2>
   bool get canBeWaitedFor =>
       shouldSignalReady || pendingResult != null || isAsync;
 
+  @override
+  bool get acceptsParams =>
+      creationFunctionParam != null || asyncCreationFunctionParam != null;
+
   final bool shouldSignalReady;
 
   int _referenceCount = 0;
@@ -237,12 +241,10 @@ class _ObjectRegistration<T extends Object, P1, P2>
   /// returns an instance depending on the type of the registration if [async==false]
   T getObject(dynamic param1, dynamic param2) {
     assert(
-      !(![
-            ObjectRegistrationType.alwaysNew,
-            ObjectRegistrationType.cachedFactory,
-          ].contains(registrationType) &&
-          (param1 != null || param2 != null)),
-      'You can only pass parameters to factories!',
+      acceptsParams || (param1 == null && param2 == null),
+      'You passed parameters when accessing $registeredWithType, but it is not '
+      'registered with registerFactoryParam/registerCachedFactoryParam '
+      '(or their async variants). Parameters would be ignored.',
     );
 
     try {
@@ -342,12 +344,10 @@ class _ObjectRegistration<T extends Object, P1, P2>
   /// if [dependsOn.isNotEmpty].
   Future<R> getObjectAsync<R>(dynamic param1, dynamic param2) async {
     assert(
-      !(![
-            ObjectRegistrationType.alwaysNew,
-            ObjectRegistrationType.cachedFactory,
-          ].contains(registrationType) &&
-          (param1 != null || param2 != null)),
-      'You can only pass parameters to factories!',
+      acceptsParams || (param1 == null && param2 == null),
+      'You passed parameters when accessing $registeredWithType, but it is not '
+      'registered with registerFactoryParam/registerCachedFactoryParam '
+      '(or their async variants). Parameters would be ignored.',
     );
 
     throwIfNot(
@@ -690,6 +690,14 @@ class _GetItImplementation implements GetIt {
   @visibleForTesting
   @override
   bool skipDoubleRegistration = false;
+
+  /// By default [unregister] throws if there is no matching registration,
+  /// because that usually means that you call unregister/dispose once too often.
+  /// If you don't want GetIt to check this, set this to `true` and a missing
+  /// registration will be silently ignored by [unregister].
+  @override
+  bool skipUnregisterIfNotRegistered = false;
+
   @override
   void enableRegisteringMultipleInstancesOfOneType() {
     allowRegisterMultipleImplementationsOfoneType = true;
@@ -1483,6 +1491,9 @@ class _GetItImplementation implements GetIt {
   /// If you have provided an disposing function when you registered the object that one will be called automatically
   /// If you have enabled reference counting when registering, [unregister] will only unregister and dispose the object
   /// if referenceCount is 0
+  /// If no matching registration is found a [StateError] is thrown unless
+  /// [skipUnregisterIfNotRegistered] is set to `true`, in which case the call is
+  /// silently ignored.
   ///
   @override
   FutureOr unregister<T extends Object>({
@@ -1491,9 +1502,20 @@ class _GetItImplementation implements GetIt {
     FutureOr Function(T)? disposingFunction,
     bool ignoreReferenceCount = false,
   }) async {
-    final registrationToRemove = instance != null
-        ? _findRegistrationByInstance(instance)
-        : _findRegistrationByNameAndType<T>(instanceName);
+    final _ObjectRegistration registrationToRemove;
+    if (skipUnregisterIfNotRegistered) {
+      final registrationOrNull = instance != null
+          ? _findFirstRegistrationByInstanceOrNull(instance)
+          : _findFirstRegistrationByNameAndTypeOrNull<T>(instanceName);
+      if (registrationOrNull == null) {
+        return;
+      }
+      registrationToRemove = registrationOrNull;
+    } else {
+      registrationToRemove = instance != null
+          ? _findRegistrationByInstance(instance)
+          : _findRegistrationByNameAndType<T>(instanceName);
+    }
 
     throwIf(
       registrationToRemove.objectsWaiting.isNotEmpty,
