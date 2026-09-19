@@ -1151,6 +1151,159 @@ void main() {
       throwsStateError,
     );
   });
+
+  group('acceptsParams / parameters on param-less registrations', () {
+    setUp(() async {
+      await GetIt.I.reset();
+    });
+
+    test('acceptsParams reflects the registration kind', () {
+      final getIt = GetIt.instance;
+      getIt.registerFactory<TestClass>(() => TestClass());
+      getIt.registerFactoryParam<TestClassParam, String, void>(
+        (s, _) => TestClassParam(param1: s),
+      );
+      getIt.registerCachedFactory<TestClass2>(() => TestClass2());
+      getIt.registerCachedFactoryParam<TestClassParam, String, void>(
+        (s, _) => TestClassParam(param1: s),
+        instanceName: 'cachedParam',
+      );
+      getIt.registerLazySingleton<TestClass>(
+        () => TestClass(),
+        instanceName: 'lazy',
+      );
+
+      expect(
+        getIt.findFirstObjectRegistration<TestClass>()!.acceptsParams,
+        false,
+      );
+      expect(
+        getIt.findFirstObjectRegistration<TestClassParam>()!.acceptsParams,
+        true,
+      );
+      expect(
+        getIt.findFirstObjectRegistration<TestClass2>()!.acceptsParams,
+        false,
+      );
+      expect(
+        getIt
+            .findFirstObjectRegistration<TestClassParam>(
+              instanceName: 'cachedParam',
+            )!
+            .acceptsParams,
+        true,
+      );
+      expect(
+        getIt
+            .findFirstObjectRegistration<TestClass>(instanceName: 'lazy')!
+            .acceptsParams,
+        false,
+      );
+    });
+
+    test('passing parameters to a param-less factory asserts', () {
+      final getIt = GetIt.instance;
+      getIt.registerFactory<TestClass>(() => TestClass());
+      expect(
+        () => getIt<TestClass>(param1: 'x'),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('passing parameters to a param-less cached factory asserts', () {
+      final getIt = GetIt.instance;
+      getIt.registerCachedFactory<TestClass>(() => TestClass());
+      expect(
+        () => getIt<TestClass>(param1: 'x'),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('passing parameters to a param-less async factory asserts', () {
+      final getIt = GetIt.instance;
+      getIt.registerFactoryAsync<TestClass>(() async => TestClass());
+      expect(
+        () => getIt.getAsync<TestClass>(param1: 'x'),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('passing parameters to a singleton still asserts', () {
+      final getIt = GetIt.instance;
+      getIt.registerSingleton<TestClass>(TestClass());
+      expect(
+        () => getIt<TestClass>(param1: 'x'),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+  });
+
+  group('skipUnregisterIfNotRegistered', () {
+    tearDown(() {
+      GetIt.I.skipUnregisterIfNotRegistered = false;
+    });
+
+    test('unregister of a not registered type throws by default', () async {
+      final getIt = GetIt.instance;
+
+      expect(getIt.skipUnregisterIfNotRegistered, false);
+
+      await expectLater(getIt.unregister<TestClass>(), throwsStateError);
+      await expectLater(
+        getIt.unregister<TestClass>(instanceName: 'instanceName'),
+        throwsStateError,
+      );
+      await expectLater(
+        getIt.unregister(instance: TestClass()),
+        throwsStateError,
+      );
+    });
+
+    test('unregister of a not registered type does not throw when enabled',
+        () async {
+      final getIt = GetIt.instance;
+      getIt.skipUnregisterIfNotRegistered = true;
+
+      await getIt.unregister<TestClass>();
+      await getIt.unregister<TestClass>(instanceName: 'instanceName');
+
+      expect(getIt.isRegistered<TestClass>(), false);
+    });
+
+    test('unregister of an unknown instance does not throw when enabled',
+        () async {
+      final getIt = GetIt.instance;
+      getIt.skipUnregisterIfNotRegistered = true;
+
+      await getIt.unregister(instance: TestClass());
+
+      expect(disposeCounter, 0);
+    });
+
+    test('unregister of a registered object still unregisters and disposes',
+        () async {
+      final getIt = GetIt.instance;
+      getIt.skipUnregisterIfNotRegistered = true;
+
+      getIt.registerSingleton<TestClass>(
+        TestClass(),
+        dispose: (x) => x.dispose(),
+      );
+      final instance = getIt<TestClass>();
+
+      await getIt.unregister<TestClass>();
+
+      expect(disposeCounter, 1);
+      expect(getIt.isRegistered<TestClass>(), false);
+
+      // a second unregister of the same object is now silently ignored
+      await getIt.unregister(instance: instance);
+      await getIt.unregister<TestClass>();
+
+      expect(disposeCounter, 1);
+    });
+  });
+
   test('change registration name with type and name', () async {
     final getIt = GetIt.instance;
     disposeCounter = 0;

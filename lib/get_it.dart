@@ -133,6 +133,11 @@ abstract class ObjectRegistration<T extends Object> {
   /// true if one of the async registration functions have been used
   bool get isAsync;
 
+  /// true if the registered factory function takes parameters, i.e. the
+  /// registration was made with `registerFactoryParam`,
+  /// `registerCachedFactoryParam` or one of their async variants
+  bool get acceptsParams;
+
   /// If an existing Object gets registered or an async/lazy Singleton has finished
   /// its creation, it is stored here
   Object? get instance;
@@ -192,6 +197,12 @@ abstract class GetIt {
   /// If you really need, you can disable the Asserts / Error by setting[skipDoubleRegistration]= true
   @visibleForTesting
   bool skipDoubleRegistration = false;
+
+  /// By default [unregister] throws if there is no matching registration,
+  /// because that usually means that you call unregister/dispose once too often.
+  /// If you don't want GetIt to check this, set this to `true` and a missing
+  /// registration will be silently ignored by [unregister].
+  bool skipUnregisterIfNotRegistered = false;
 
   /// Till V7.6.7 GetIt didn't allow to register multiple instances of the same type.
   /// if you want to register multiple instances of the same type you can enable this
@@ -801,6 +812,9 @@ abstract class GetIt {
   /// if referenceCount is 0
   /// [ignoreReferenceCount] if `true` it will ignore the reference count and unregister the object
   /// only use this if you know what you are doing
+  /// If no matching registration is found a [StateError] is thrown unless
+  /// [skipUnregisterIfNotRegistered] is set to `true`, in which case the call is
+  /// silently ignored.
   FutureOr unregister<T extends Object>({
     Object? instance,
     String? instanceName,

@@ -1,3 +1,9 @@
+## 9.3.0
+
+* `pubspec.lock` is no longer committed, following the Dart guidelines for library packages.
+* New `acceptsParams` getter on `ObjectRegistration` that tells whether the registered factory takes parameters. Passing `param1`/`param2` to a registration that doesn't accept parameters now fails an assert in debug mode instead of silently ignoring them.
+* New global flag `skipUnregisterIfNotRegistered`: when set to `true`, `unregister` silently ignores a missing registration instead of throwing (default stays `false`). Thanks to @Gorniaky (#420) and @AzazelSensei (#424) for raising this.
+
 ## [9.2.1] - 2026-02-19
 
 * Added AI skill files in `skills/` directory for AI coding assistants

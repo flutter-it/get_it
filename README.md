@@ -120,6 +120,9 @@ Choose the lifetime that fits your needs:
 - **Multiple Registrations** — Register multiple implementations and retrieve them all as a collection.
   [Read more →](https://flutter-it.dev/documentation/get_it/multiple_registrations)
 
+- **Unregistering** — Remove registrations with `unregister()`, optionally disposing the instance. By default `unregister()` throws if nothing matching is registered (usually a sign that you dispose once too often); set `getIt.skipUnregisterIfNotRegistered = true` to silently ignore a missing registration instead.
+  [Read more →](https://flutter-it.dev/documentation/get_it/object_registration#unregistering-services)
+
 ### Testing Support
 
 get_it makes testing a breeze:
@@ -222,13 +225,21 @@ Widget myPreview() => const MyWidget();
 
 ## AI-Assisted Development
 
-This package includes **AI skill files** in the `skills/` directory that help AI coding assistants
-(Claude Code, Cursor, GitHub Copilot, and others) generate correct code using get_it.
+This package ships an [Agent Skill](https://agentskills.io) for AI coding assistants
+(Claude Code, Cursor, GitHub Copilot, Codex, Gemini CLI and others) in `skills/get-it-expert/`.
+It teaches them the critical rules, common patterns and anti-patterns of get_it.
+Install it into your project with the official Dart skills tool:
 
-The skill files teach AI tools critical rules, common patterns, and anti-patterns specific to get_it.
-Included skills: `get-it-expert`, `flutter-architecture-expert`.
+```bash
+dart run skills@ get
+```
 
-They follow the [Agent Skills](https://github.com/agentskills) open standard.
+For the ecosystem-wide skills (architecture guidance, feed/data-source patterns, overview)
+and the skills of the other flutter_it packages run:
+
+```bash
+dart run skills@ add flutter-it/flutter_it
+```
 
 [Learn more about AI skills →](https://flutter-it.dev/misc/ai_skills)
 
