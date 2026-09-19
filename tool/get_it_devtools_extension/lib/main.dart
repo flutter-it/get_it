@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:vm_service/vm_service.dart';
 
 import 'src/model.dart';
+import 'src/widgets/filter_dialog.dart';
+import 'src/widgets/sort_dialog.dart';
 
 void main() {
   runApp(const GetItDevToolsExtension());
@@ -31,6 +33,20 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
   List<RegistrationInfo> _registrations = [];
   bool _isLoading = true;
   String? _error;
+  StreamSubscription<Event>? _eventSubscription;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  // Sorting
+  SortField _sortField = SortField.defaultOrder;
+  SortDirection _sortDirection = SortDirection.asc;
+
+  // Filters
+  final Set<String> _selectedRegistrationTypes = {};
+  final Set<String> _selectedScopes = {};
+  bool? _filterAsync;
+  bool? _filterReady;
+  bool? _filterCreated;
 
   @override
   void initState() {
@@ -38,17 +54,97 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
     _init();
   }
 
+  @override
+  void dispose() {
+    _eventSubscription?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool get _hasActiveFilters =>
+      _selectedRegistrationTypes.isNotEmpty ||
+      _selectedScopes.isNotEmpty ||
+      _filterAsync != null ||
+      _filterReady != null ||
+      _filterCreated != null;
+
+  List<RegistrationInfo> get _filteredRegistrations {
+    final filtered =
+        [
+              if (_searchQuery.isNotEmpty) _matchesSearch,
+              if (_selectedScopes.isNotEmpty) _matchesScope,
+              if (_selectedRegistrationTypes.isNotEmpty)
+                _matchesRegistrationType,
+              if (_filterAsync != null) _matchesAsync,
+              if (_filterReady != null) _matchesReady,
+              if (_filterCreated != null) _matchesCreated,
+            ]
+            .fold<Iterable<RegistrationInfo>>(
+              _registrations,
+              (data, predicate) => data.where(predicate),
+            )
+            .toList();
+
+    // For defaultOrder, descending means reversing the list
+    if (_sortField == SortField.defaultOrder) {
+      return _sortDirection == SortDirection.desc
+          ? filtered.reversed.toList()
+          : filtered;
+    }
+
+    return filtered..sort(_compareBySortField);
+  }
+
+  bool _matchesSearch(RegistrationInfo item) {
+    final query = _searchQuery.toLowerCase();
+    return item.type.toLowerCase().contains(query) ||
+        (item.instanceName?.toLowerCase().contains(query) ?? false) ||
+        (item.instanceDetails?.toLowerCase().contains(query) ?? false);
+  }
+
+  bool _matchesScope(RegistrationInfo item) =>
+      _selectedScopes.contains(item.scopeName);
+
+  bool _matchesRegistrationType(RegistrationInfo item) =>
+      _selectedRegistrationTypes.contains(item.registrationType);
+
+  bool _matchesAsync(RegistrationInfo item) => item.isAsync == _filterAsync;
+
+  bool _matchesReady(RegistrationInfo item) => item.isReady == _filterReady;
+
+  bool _matchesCreated(RegistrationInfo item) =>
+      item.isCreated == _filterCreated;
+
+  int _compareBySortField(RegistrationInfo a, RegistrationInfo b) {
+    final comparison = switch (_sortField) {
+      SortField.type => a.type.compareTo(b.type),
+      SortField.instanceName => (a.instanceName ?? '').compareTo(
+        b.instanceName ?? '',
+      ),
+      SortField.instanceDetails => (a.instanceDetails ?? '').compareTo(
+        b.instanceDetails ?? '',
+      ),
+      SortField.defaultOrder => 0,
+    };
+
+    return _sortDirection == SortDirection.asc ? comparison : -comparison;
+  }
+
   Future<void> _init() async {
     try {
       await _fetchRegistrations();
+      if (!mounted) return;
 
       // Listen for events
-      serviceManager.service?.onExtensionEvent.listen((Event event) {
+      _eventSubscription = serviceManager.service?.onExtensionEvent.listen((
+        Event event,
+      ) {
         if (event.extensionKind?.startsWith('get_it') ?? false) {
           _fetchRegistrations();
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -66,6 +162,7 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
           .map((e) => RegistrationInfo.fromJson(e as Map<String, dynamic>))
           .toList();
 
+      if (!mounted) return;
       setState(() {
         _registrations = registrations;
         _isLoading = false;
@@ -73,6 +170,7 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
     } catch (e) {
       // If the extension is not registered yet (app starting up), we might get an error.
       // We can retry or just show empty state.
+      if (!mounted) return;
       setState(() {
         _error =
             'Could not fetch registrations. Make sure debugEventsEnabled is true in GetIt.';
@@ -109,18 +207,63 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
           title: const Text('GetIt Registrations'),
           actions: [
             IconButton(
+              icon: const Icon(Icons.filter_list),
+              tooltip: 'Filter',
+              onPressed: _handleFilterPressed,
+            ),
+            IconButton(
+              icon: const Icon(Icons.sort),
+              tooltip: 'Sort',
+              onPressed: _handleSortPressed,
+            ),
+            IconButton(
               icon: const Icon(Icons.refresh),
               tooltip: 'Refresh',
               onPressed: _fetchRegistrations,
             ),
           ],
         ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Search registrations...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
+          ),
+        ),
+        // Show active filter chips
+        if (_hasActiveFilters) _buildFilterChips(),
         Expanded(child: _buildTable()),
       ],
     );
   }
 
   Widget _buildTable() {
+    final filtered = _filteredRegistrations;
+
+    if (filtered.isEmpty && (_searchQuery.isNotEmpty || _hasActiveFilters)) {
+      return const Center(child: Text('No results found'));
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
       child: SingleChildScrollView(
@@ -136,7 +279,7 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
             DataColumn(label: Text('Created')),
             DataColumn(label: Text('Instance Details')),
           ],
-          rows: _registrations.map((item) {
+          rows: filtered.map((item) {
             return DataRow(
               cells: [
                 DataCell(Text(item.type)),
@@ -170,5 +313,118 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
       return text;
     }
     return '${text.substring(0, maxLength)}...';
+  }
+
+  Padding _buildFilterChips() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          ..._selectedScopes.map(
+            (scope) => Chip(
+              label: Text('Scope: $scope'),
+              onDeleted: () {
+                setState(() {
+                  _selectedScopes.remove(scope);
+                });
+              },
+            ),
+          ),
+          ..._selectedRegistrationTypes.map(
+            (type) => Chip(
+              label: Text('Mode: $type'),
+              onDeleted: () {
+                setState(() {
+                  _selectedRegistrationTypes.remove(type);
+                });
+              },
+            ),
+          ),
+          if (_filterAsync != null)
+            Chip(
+              label: Text('Async: ${_filterAsync! ? 'Yes' : 'No'}'),
+              onDeleted: () {
+                setState(() {
+                  _filterAsync = null;
+                });
+              },
+            ),
+          if (_filterReady != null)
+            Chip(
+              label: Text('Ready: ${_filterReady! ? 'Yes' : 'No'}'),
+              onDeleted: () {
+                setState(() {
+                  _filterReady = null;
+                });
+              },
+            ),
+          if (_filterCreated != null)
+            Chip(
+              label: Text('Created: ${_filterCreated! ? 'Yes' : 'No'}'),
+              onDeleted: () {
+                setState(() {
+                  _filterCreated = null;
+                });
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleFilterPressed() async {
+    final allRegistrationTypes =
+        _registrations.map((r) => r.registrationType).toSet().toList()..sort();
+    final allScopes = _registrations.map((r) => r.scopeName).toSet().toList()
+      ..sort();
+
+    final initialState = FilterState(
+      selectedScopes: _selectedScopes,
+      selectedRegistrationTypes: _selectedRegistrationTypes,
+      filterAsync: _filterAsync,
+      filterReady: _filterReady,
+      filterCreated: _filterCreated,
+    );
+    final result = await showDialog<FilterState>(
+      context: context,
+      builder: (context) => FilterDialog(
+        registrationTypes: allRegistrationTypes,
+        scopes: allScopes,
+        initialState: initialState,
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _selectedScopes
+        ..clear()
+        ..addAll(result.selectedScopes);
+      _selectedRegistrationTypes
+        ..clear()
+        ..addAll(result.selectedRegistrationTypes);
+      _filterAsync = result.filterAsync;
+      _filterReady = result.filterReady;
+      _filterCreated = result.filterCreated;
+    });
+  }
+
+  Future<void> _handleSortPressed() async {
+    final initialState = SortState(
+      field: _sortField,
+      direction: _sortDirection,
+    );
+    final result = await showDialog<SortState>(
+      context: context,
+      builder: (context) => SortDialog(initialState: initialState),
+    );
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _sortField = result.field;
+      _sortDirection = result.direction;
+    });
   }
 }

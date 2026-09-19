@@ -498,3 +498,7 @@ coverage
 
 # Ignore extension source for pub publish
 tool/get_it_devtools_extension/
+
+# DevTools extension build: debug artifacts not needed at runtime
+extension/devtools/build/**/*.symbols
+extension/devtools/build/.last_build_id

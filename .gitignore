@@ -492,3 +492,7 @@ coverage
 
 # Library package: lock file is not committed (https://dart.dev/tools/pub/private-files)
 /pubspec.lock
+
+# DevTools extension build: debug artifacts not needed at runtime
+extension/devtools/build/**/*.symbols
+extension/devtools/build/.last_build_id
