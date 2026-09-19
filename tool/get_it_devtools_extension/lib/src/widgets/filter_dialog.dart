@@ -15,22 +15,6 @@ class FilterState {
     this.filterReady,
     this.filterCreated,
   });
-
-  FilterState copyWith({
-    Set<String>? selectedScopes,
-    Set<String>? selectedRegistrationTypes,
-    bool? filterAsync,
-    bool? filterReady,
-    bool? filterCreated,
-  }) {
-    return FilterState(
-      selectedScopes: selectedScopes ?? this.selectedScopes,
-      selectedRegistrationTypes: selectedRegistrationTypes ?? this.selectedRegistrationTypes,
-      filterAsync: filterAsync ?? this.filterAsync,
-      filterReady: filterReady ?? this.filterReady,
-      filterCreated: filterCreated ?? this.filterCreated,
-    );
-  }
 }
 
 /// Standalone filter dialog widget
@@ -39,7 +23,12 @@ class FilterDialog extends StatefulWidget {
   final List<String> scopes;
   final FilterState initialState;
 
-  const FilterDialog({super.key, required this.registrationTypes, required this.scopes, required this.initialState});
+  const FilterDialog({
+    super.key,
+    required this.registrationTypes,
+    required this.scopes,
+    required this.initialState,
+  });
 
   @override
   State<FilterDialog> createState() => _FilterDialogState();
@@ -56,7 +45,9 @@ class _FilterDialogState extends State<FilterDialog> {
   void initState() {
     super.initState();
     selectedScopes = Set<String>.from(widget.initialState.selectedScopes);
-    selectedRegistrationTypes = Set<String>.from(widget.initialState.selectedRegistrationTypes);
+    selectedRegistrationTypes = Set<String>.from(
+      widget.initialState.selectedRegistrationTypes,
+    );
     filterAsync = widget.initialState.filterAsync;
     filterReady = widget.initialState.filterReady;
     filterCreated = widget.initialState.filterCreated;
@@ -73,7 +64,10 @@ class _FilterDialogState extends State<FilterDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.scopes.isNotEmpty) ...[
-              const Text('Scope:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Scope:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -97,7 +91,10 @@ class _FilterDialogState extends State<FilterDialog> {
               ),
             ],
             if (widget.registrationTypes.isNotEmpty) ...[
-              const Text('Mode:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Mode:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -172,7 +169,10 @@ class _FilterDialogState extends State<FilterDialog> {
               ],
             ),
 
-            const Text('Created:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Created:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -213,7 +213,10 @@ class _FilterDialogState extends State<FilterDialog> {
           },
           child: const Text('Clear All'),
         ),
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
         TextButton(
           onPressed: () {
             Navigator.of(context).pop(

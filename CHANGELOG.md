@@ -1,3 +1,8 @@
+## [9.3.0] - 2026-09-19
+
+* DevTools extension: filter and sort for the registrations table. Thanks to @yang-lile (#421).
+* DevTools extension rebuilt with Flutter 3.47.1.
+
 ## [9.2.1] - 2026-02-19
 
 * Added AI skill files in `skills/` directory for AI coding assistants

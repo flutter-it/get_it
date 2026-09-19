@@ -9,7 +9,10 @@ class SortState {
   final SortField field;
   final SortDirection direction;
 
-  const SortState({this.field = SortField.defaultOrder, this.direction = SortDirection.asc});
+  const SortState({
+    this.field = SortField.defaultOrder,
+    this.direction = SortDirection.asc,
+  });
 }
 
 /// Standalone sort dialog widget
@@ -99,10 +102,15 @@ class _SortDialogState extends State<SortDialog> {
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
         TextButton(
           onPressed: () {
-            Navigator.of(context).pop(SortState(field: selectedField, direction: selectedDirection));
+            Navigator.of(context).pop(
+              SortState(field: selectedField, direction: selectedDirection),
+            );
           },
           child: const Text('OK'),
         ),

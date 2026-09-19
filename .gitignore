@@ -489,3 +489,7 @@ coverage
 
 # DevTools Extension
 !extension/devtools/build/
+
+# DevTools extension build: debug artifacts not needed at runtime
+extension/devtools/build/**/*.symbols
+extension/devtools/build/.last_build_id

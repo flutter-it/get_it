@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:devtools_app_shared/ui.dart';
 import 'package:devtools_extensions/devtools_extensions.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it_devtools_extension/src/widgets/filter_dialog.dart';
-import 'package:get_it_devtools_extension/src/widgets/sort_dialog.dart';
 import 'package:vm_service/vm_service.dart';
 
 import 'src/model.dart';
+import 'src/widgets/filter_dialog.dart';
+import 'src/widgets/sort_dialog.dart';
 
 void main() {
   runApp(const GetItDevToolsExtension());
@@ -33,6 +33,7 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
   List<RegistrationInfo> _registrations = [];
   bool _isLoading = true;
   String? _error;
+  StreamSubscription<Event>? _eventSubscription;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -55,23 +56,40 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
 
   @override
   void dispose() {
+    _eventSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
+  bool get _hasActiveFilters =>
+      _selectedRegistrationTypes.isNotEmpty ||
+      _selectedScopes.isNotEmpty ||
+      _filterAsync != null ||
+      _filterReady != null ||
+      _filterCreated != null;
+
   List<RegistrationInfo> get _filteredRegistrations {
-    final filtered = [
-      if (_searchQuery.isNotEmpty) _matchesSearch,
-      if (_selectedScopes.isNotEmpty) _matchesScope,
-      if (_selectedRegistrationTypes.isNotEmpty) _matchesRegistrationType,
-      if (_filterAsync != null) _matchesAsync,
-      if (_filterReady != null) _matchesReady,
-      if (_filterCreated != null) _matchesCreated,
-    ].fold<Iterable<RegistrationInfo>>(_registrations, (data, predicate) => data.where(predicate)).toList();
+    final filtered =
+        [
+              if (_searchQuery.isNotEmpty) _matchesSearch,
+              if (_selectedScopes.isNotEmpty) _matchesScope,
+              if (_selectedRegistrationTypes.isNotEmpty)
+                _matchesRegistrationType,
+              if (_filterAsync != null) _matchesAsync,
+              if (_filterReady != null) _matchesReady,
+              if (_filterCreated != null) _matchesCreated,
+            ]
+            .fold<Iterable<RegistrationInfo>>(
+              _registrations,
+              (data, predicate) => data.where(predicate),
+            )
+            .toList();
 
     // For defaultOrder, descending means reversing the list
     if (_sortField == SortField.defaultOrder) {
-      return _sortDirection == SortDirection.desc ? filtered.reversed.toList() : filtered;
+      return _sortDirection == SortDirection.desc
+          ? filtered.reversed.toList()
+          : filtered;
     }
 
     return filtered..sort(_compareBySortField);
@@ -84,23 +102,28 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
         (item.instanceDetails?.toLowerCase().contains(query) ?? false);
   }
 
-  bool _matchesScope(RegistrationInfo item) => _selectedScopes.contains(item.scopeName);
+  bool _matchesScope(RegistrationInfo item) =>
+      _selectedScopes.contains(item.scopeName);
 
-  bool _matchesRegistrationType(RegistrationInfo item) => _selectedRegistrationTypes.contains(item.registrationType);
+  bool _matchesRegistrationType(RegistrationInfo item) =>
+      _selectedRegistrationTypes.contains(item.registrationType);
 
   bool _matchesAsync(RegistrationInfo item) => item.isAsync == _filterAsync;
 
   bool _matchesReady(RegistrationInfo item) => item.isReady == _filterReady;
 
-  bool _matchesCreated(RegistrationInfo item) => item.isCreated == _filterCreated;
+  bool _matchesCreated(RegistrationInfo item) =>
+      item.isCreated == _filterCreated;
 
   int _compareBySortField(RegistrationInfo a, RegistrationInfo b) {
-    if (_sortField == SortField.defaultOrder) return 0;
-
     final comparison = switch (_sortField) {
       SortField.type => a.type.compareTo(b.type),
-      SortField.instanceName => (a.instanceName ?? '').compareTo(b.instanceName ?? ''),
-      SortField.instanceDetails => (a.instanceDetails ?? '').compareTo(b.instanceDetails ?? ''),
+      SortField.instanceName => (a.instanceName ?? '').compareTo(
+        b.instanceName ?? '',
+      ),
+      SortField.instanceDetails => (a.instanceDetails ?? '').compareTo(
+        b.instanceDetails ?? '',
+      ),
       SortField.defaultOrder => 0,
     };
 
@@ -110,14 +133,18 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
   Future<void> _init() async {
     try {
       await _fetchRegistrations();
+      if (!mounted) return;
 
       // Listen for events
-      serviceManager.service?.onExtensionEvent.listen((Event event) {
+      _eventSubscription = serviceManager.service?.onExtensionEvent.listen((
+        Event event,
+      ) {
         if (event.extensionKind?.startsWith('get_it') ?? false) {
           _fetchRegistrations();
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -127,10 +154,15 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
 
   Future<void> _fetchRegistrations() async {
     try {
-      final response = await serviceManager.callServiceExtensionOnMainIsolate('ext.get_it.getRegistrations');
+      final response = await serviceManager.callServiceExtensionOnMainIsolate(
+        'ext.get_it.getRegistrations',
+      );
       final List<dynamic> data = response.json?['registrations'] ?? [];
-      final registrations = data.map((e) => RegistrationInfo.fromJson(e as Map<String, dynamic>)).toList();
+      final registrations = data
+          .map((e) => RegistrationInfo.fromJson(e as Map<String, dynamic>))
+          .toList();
 
+      if (!mounted) return;
       setState(() {
         _registrations = registrations;
         _isLoading = false;
@@ -138,8 +170,10 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
     } catch (e) {
       // If the extension is not registered yet (app starting up), we might get an error.
       // We can retry or just show empty state.
+      if (!mounted) return;
       setState(() {
-        _error = 'Could not fetch registrations. Make sure debugEventsEnabled is true in GetIt.';
+        _error =
+            'Could not fetch registrations. Make sure debugEventsEnabled is true in GetIt.';
         _isLoading = false;
       });
     }
@@ -158,7 +192,10 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
           children: [
             Text('Error: $_error'),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _fetchRegistrations, child: const Text('Retry')),
+            ElevatedButton(
+              onPressed: _fetchRegistrations,
+              child: const Text('Retry'),
+            ),
           ],
         ),
       );
@@ -169,9 +206,21 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
         AreaPaneHeader(
           title: const Text('GetIt Registrations'),
           actions: [
-            IconButton(icon: const Icon(Icons.filter_list), tooltip: 'Filter', onPressed: _handleFilterPressed),
-            IconButton(icon: const Icon(Icons.sort), tooltip: 'Sort', onPressed: _handleSortPressed),
-            IconButton(icon: const Icon(Icons.refresh), tooltip: 'Refresh', onPressed: _fetchRegistrations),
+            IconButton(
+              icon: const Icon(Icons.filter_list),
+              tooltip: 'Filter',
+              onPressed: _handleFilterPressed,
+            ),
+            IconButton(
+              icon: const Icon(Icons.sort),
+              tooltip: 'Sort',
+              onPressed: _handleSortPressed,
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh',
+              onPressed: _fetchRegistrations,
+            ),
           ],
         ),
         Padding(
@@ -181,7 +230,7 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
             decoration: InputDecoration(
               hintText: 'Search registrations...',
               prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchQuery.isNotEmpty == true
+              suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear),
                       onPressed: () {
@@ -202,12 +251,7 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
           ),
         ),
         // Show active filter chips
-        if (_selectedRegistrationTypes.isNotEmpty ||
-            _selectedScopes.isNotEmpty ||
-            _filterAsync != null ||
-            _filterReady != null ||
-            _filterCreated != null)
-          _buildFilterChips(),
+        if (_hasActiveFilters) _buildFilterChips(),
         Expanded(child: _buildTable()),
       ],
     );
@@ -216,7 +260,7 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
   Widget _buildTable() {
     final filtered = _filteredRegistrations;
 
-    if (filtered.isEmpty && _searchQuery.isNotEmpty) {
+    if (filtered.isEmpty && (_searchQuery.isNotEmpty || _hasActiveFilters)) {
       return const Center(child: Text('No results found'));
     }
 
@@ -249,7 +293,10 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
                   item.instanceDetails != null
                       ? Tooltip(
                           message: item.instanceDetails!,
-                          child: Text(_truncateText(item.instanceDetails!, 50), overflow: TextOverflow.ellipsis),
+                          child: Text(
+                            _truncateText(item.instanceDetails!, 50),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         )
                       : const Text(''),
                 ),
@@ -328,8 +375,10 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
   }
 
   Future<void> _handleFilterPressed() async {
-    final allRegistrationTypes = _registrations.map((r) => r.registrationType).toSet().toList()..sort();
-    final allScopes = _registrations.map((r) => r.scopeName).toSet().toList()..sort();
+    final allRegistrationTypes =
+        _registrations.map((r) => r.registrationType).toSet().toList()..sort();
+    final allScopes = _registrations.map((r) => r.scopeName).toSet().toList()
+      ..sort();
 
     final initialState = FilterState(
       selectedScopes: _selectedScopes,
@@ -340,36 +389,42 @@ class _GetItDevToolsScreenState extends State<GetItDevToolsScreen> {
     );
     final result = await showDialog<FilterState>(
       context: context,
-      builder: (context) =>
-          FilterDialog(registrationTypes: allRegistrationTypes, scopes: allScopes, initialState: initialState),
+      builder: (context) => FilterDialog(
+        registrationTypes: allRegistrationTypes,
+        scopes: allScopes,
+        initialState: initialState,
+      ),
     );
 
-    if (result != null) {
-      setState(() {
-        _selectedScopes
-          ..clear()
-          ..addAll(result.selectedScopes);
-        _selectedRegistrationTypes
-          ..clear()
-          ..addAll(result.selectedRegistrationTypes);
-        _filterAsync = result.filterAsync;
-        _filterReady = result.filterReady;
-        _filterCreated = result.filterCreated;
-      });
-    }
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _selectedScopes
+        ..clear()
+        ..addAll(result.selectedScopes);
+      _selectedRegistrationTypes
+        ..clear()
+        ..addAll(result.selectedRegistrationTypes);
+      _filterAsync = result.filterAsync;
+      _filterReady = result.filterReady;
+      _filterCreated = result.filterCreated;
+    });
   }
 
   Future<void> _handleSortPressed() async {
-    final initialState = SortState(field: _sortField, direction: _sortDirection);
+    final initialState = SortState(
+      field: _sortField,
+      direction: _sortDirection,
+    );
     final result = await showDialog<SortState>(
       context: context,
       builder: (context) => SortDialog(initialState: initialState),
     );
-    if (result != null) {
-      setState(() {
-        _sortField = result.field;
-        _sortDirection = result.direction;
-      });
-    }
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _sortField = result.field;
+      _sortDirection = result.direction;
+    });
   }
 }
