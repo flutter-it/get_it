@@ -1,3 +1,7 @@
+## [9.3.0] - 2026-09-19
+
+* Fixed analyzer warnings/infos reported by pub.dev and updated dev dependencies.
+
 ## [9.2.1] - 2026-02-19
 
 * Added AI skill files in `skills/` directory for AI coding assistants

@@ -170,7 +170,7 @@ class _ObjectRegistration<T extends Object, P1, P2>
   }
 
   /// Checks if the registered type T is a subtype of S (or the same type)
-  /// Uses the generic list covariance trick: <T>[] is List<S>
+  /// Uses the generic list covariance trick: `<T>[] is List<S>`
   bool isSubtypeOf<S>() {
     return <T>[] is List<S>;
   }
@@ -298,6 +298,7 @@ class _ObjectRegistration<T extends Object, P1, P2>
 
   /// returns an async instance depending on the type of the registration if [async==true] or
   /// if [dependsOn.isNotEmpty].
+  // ignore: unnecessary_async
   Future<R> getObjectAsync<R>(dynamic param1, dynamic param2) async {
     assert(
       !(![
@@ -315,21 +316,28 @@ class _ObjectRegistration<T extends Object, P1, P2>
         'this way if they are created asynchronously',
       ),
     );
+    // The try/catch here only exists to log synchronous errors thrown while
+    // starting the creation (asserts, casts, throwIfNot). Async failures
+    // intentionally propagate to the caller's await, so returning un-awaited
+    // Futures is correct here.
     try {
       switch (registrationType) {
         case ObjectRegistrationType.alwaysNew:
           if (asyncCreationFunctionParam != null) {
             // Validate parameters in debug mode
             _validateFactoryParams(param1, param2);
+            // ignore: unawaited_return_in_try_block
             return asyncCreationFunctionParam!(param1 as P1, param2 as P2)
                 as Future<R>;
           } else {
+            // ignore: unawaited_return_in_try_block
             return asyncCreationFunction!() as Future<R>;
           }
         case ObjectRegistrationType.cachedFactory:
           if (weakReferenceInstance?.target != null &&
               param1 == lastParam1 &&
               param2 == lastParam2) {
+            // ignore: unawaited_return_in_try_block
             return Future<R>.value(weakReferenceInstance!.target! as R);
           } else {
             if (asyncCreationFunctionParam != null) {
@@ -337,6 +345,7 @@ class _ObjectRegistration<T extends Object, P1, P2>
               _validateFactoryParams(param1, param2);
               lastParam1 = param1 as P1?;
               lastParam2 = param2 as P2?;
+              // ignore: unawaited_return_in_try_block
               return asyncCreationFunctionParam!(
                 param1 as P1,
                 param2 as P2,
@@ -345,6 +354,7 @@ class _ObjectRegistration<T extends Object, P1, P2>
                 return value;
               }) as Future<R>;
             } else {
+              // ignore: unawaited_return_in_try_block
               return asyncCreationFunction!().then((value) {
                 weakReferenceInstance = WeakReference(value);
                 return value;
@@ -353,19 +363,23 @@ class _ObjectRegistration<T extends Object, P1, P2>
           }
         case ObjectRegistrationType.constant:
           if (instance != null) {
+            // ignore: unawaited_return_in_try_block
             return Future<R>.value(instance as R);
           } else {
             assert(pendingResult != null);
+            // ignore: unawaited_return_in_try_block
             return pendingResult! as Future<R>;
           }
         case ObjectRegistrationType.lazy:
           if (instance != null) {
             // We already have a finished instance
+            // ignore: unawaited_return_in_try_block
             return Future<R>.value(instance as R);
           } else {
             if (pendingResult !=
                 null) // an async creation is already in progress
             {
+              // ignore: unawaited_return_in_try_block
               return pendingResult! as Future<R>;
             }
 
@@ -404,6 +418,7 @@ class _ObjectRegistration<T extends Object, P1, P2>
               }
               return newInstance;
             });
+            // ignore: unawaited_return_in_try_block
             return pendingResult! as Future<R>;
           }
       }
@@ -1088,13 +1103,17 @@ class _GetItImplementation implements GetIt {
   /// than one instance of one type.
   ///
   /// example:
+  /// ```dart
   ///    getIt.registerFactoryParam<TestClassParam,String,int>((s,i)
   ///        => TestClassParam(param1:s, param2: i));
+  /// ```
   ///
   /// if you only use one parameter:
   ///
+  /// ```dart
   ///    getIt.registerFactoryParam<TestClassParam,String,void>((s,_)
   ///        => TestClassParam(param1:s);
+  /// ```
   @override
   void registerFactoryParam<T extends Object, P1, P2>(
     FactoryFuncParam<T, P1, P2> factoryFunc, {
@@ -1138,13 +1157,17 @@ class _GetItImplementation implements GetIt {
   /// than one instance of one type.
   ///
   /// example:
+  /// ```dart
   ///    getIt.registerFactoryParam<TestClassParam,String,int>((s,i) async
   ///        => TestClassParam(param1:s, param2: i));
+  /// ```
   ///
   /// if you only use one parameter:
   ///
+  /// ```dart
   ///    getIt.registerFactoryParam<TestClassParam,String,void>((s,_) async
   ///        => TestClassParam(param1:s);
+  /// ```
   @override
   void registerFactoryParamAsync<T extends Object, P1, P2>(
     FactoryFuncParamAsync<T, P1?, P2?> factoryFunc, {
@@ -1908,7 +1931,7 @@ class _GetItImplementation implements GetIt {
       ),
     );
     if (currentScopeName == scopeName) {
-      return popScope();
+      return await popScope();
     }
 
     throwIfNot(

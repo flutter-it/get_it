@@ -508,7 +508,7 @@ void main() {
     expect(disposeCounter, 3);
   });
 
-  test('popscope throws if already on the base scope', () async {
+  test('popscope throws if already on the base scope', () {
     final getIt = GetIt.instance;
 
     expect(() => getIt.popScope(), throwsStateError);
@@ -838,9 +838,9 @@ void main() {
       await expectLater(
         () => getIt.pushNewScopeAsync(
           scopeName: 'scope1',
-          init: (getIt) async {
+          init: (getIt) {
             getIt.registerSingleton(TestClass());
-            throw Exception('Error during init');
+            return Future.error(Exception('Error during init'));
           },
         ),
         throwsException,
@@ -1208,7 +1208,7 @@ void main() {
       expect(identical(targetInstance, newTargetInstance), isFalse);
     });
 
-    test('throws StateError when onlyInScope scope does not exist', () async {
+    test('throws StateError when onlyInScope scope does not exist', () {
       GetIt.I.registerLazySingleton<TestClass>(() => TestClass('base'));
       GetIt.I<TestClass>(); // Access to create instance
 

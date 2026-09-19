@@ -317,7 +317,7 @@ void main() {
     },
   );
 
-  test('ready external signalling', () async {
+  test('ready external signalling', () {
     final getIt = GetIt.instance;
 
     getIt.registerSingleton<TestClass>(
@@ -351,7 +351,7 @@ void main() {
     await getIt.reset();
 
     getIt.registerSingletonAsync<TestClass>(
-      () async => TestClass(internalCompletion: false).init(),
+      () => TestClass(internalCompletion: false).init(),
     );
     getIt.registerSingletonAsync<TestClass2>(() async {
       final instance = TestClass2(internalCompletion: false, initMsDelay: 50);
@@ -359,7 +359,7 @@ void main() {
       return instance;
     });
     getIt.registerSingletonAsync<TestClass>(
-      () async => TestClass2(internalCompletion: false).init(),
+      () => TestClass2(internalCompletion: false).init(),
       instanceName: 'Second Instance',
     );
 
@@ -382,7 +382,7 @@ void main() {
     await getIt.reset();
 
     getIt.registerSingletonAsync<TestClass>(
-      () async => TestClass(internalCompletion: false).initWithExeption(),
+      () => TestClass(internalCompletion: false).initWithExeption(),
     );
     expect(getIt.isReady<TestClass>(), throwsStateError);
   });
@@ -394,7 +394,7 @@ void main() {
       await getIt.reset();
 
       getIt.registerSingletonAsync<TestClass>(
-        () async => TestClass(internalCompletion: false).init(),
+        () => TestClass(internalCompletion: false).init(),
       );
       getIt.registerSingletonAsync<TestClass2>(() async {
         final instance = TestClass2(internalCompletion: false);
@@ -617,7 +617,7 @@ void main() {
 
     Future.delayed(
       const Duration(milliseconds: 1),
-      () async => getIt.isReady<TestClass3>(callee: 'asyncTest'),
+      () => getIt.isReady<TestClass3>(callee: 'asyncTest'),
     );
 
     try {
@@ -902,7 +902,7 @@ void main() {
     });
   });
 
-  test('Code for ReadMe', () async {
+  test('Code for ReadMe', () {
     final sl = GetIt.instance;
 
     sl.registerSingletonAsync<Service1>(() async {

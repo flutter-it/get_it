@@ -38,7 +38,7 @@ void main() {
       await GetIt.I.reset();
     });
 
-    test('Service extension logic runs without error', () async {
+    test('Service extension logic runs without error', () {
       // We can't easily invoke the extension here without VM Service,
       // but we can ensure the registration code in the constructor didn't crash.
       // The constructor is called when we access GetIt.instance for the first time.
