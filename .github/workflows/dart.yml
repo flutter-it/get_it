@@ -21,6 +21,10 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Install DevTools extension dependencies
+        run: flutter pub get
+        working-directory: tool/get_it_devtools_extension
+
       - name: Check code formatting
         run: dart format --set-exit-if-changed .
 
