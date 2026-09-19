@@ -1,3 +1,7 @@
+## 9.3.0
+
+* Detect circular self-resolution of lazy singletons (sync and async) and cached factories and throw a descriptive `StateError` instead of a `StackOverflowError`. Thanks to @muhammadkamel (#423).
+
 ## [9.2.1] - 2026-02-19
 
 * Added AI skill files in `skills/` directory for AI coding assistants

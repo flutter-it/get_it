@@ -103,7 +103,7 @@ Choose the lifetime that fits your needs:
 - **Factory** — New instance every time. Great for stateless services or objects with short lifetimes.
   [Read more →](https://flutter-it.dev/documentation/get_it/object_registration#factory)
 
-> **Avoid untyped tear-offs as factories.** Registering `getIt.call` (or an untyped `getIt.get` tear-off) as `registerLazySingleton<Iface>(...)` re-enters `get<Iface>()` and used to overflow the stack. GetIt now throws a clear `StateError` for that circular self-resolution. Prefer `() => getIt<Impl>()` or a named function that keeps the concrete type argument.
+> **Avoid untyped tear-offs as factories.** Registering `getIt.call` (or an untyped `getIt.get` tear-off) as `registerLazySingleton<Iface>(...)` re-enters `get<Iface>()` and used to overflow the stack. For lazy singletons (sync and async) and cached factories GetIt now detects this circular self-resolution and throws a descriptive `StateError`. Plain `registerFactory` factories are not guarded, since a factory that recursively resolves its own type (e.g. to build a tree) is a legitimate pattern. Prefer `() => getIt<Impl>()` or a named function that keeps the concrete type argument.
 
 
 ### Advanced Features

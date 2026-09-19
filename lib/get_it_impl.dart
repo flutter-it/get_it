@@ -99,9 +99,11 @@ class _ObjectRegistration<T extends Object, P1, P2>
   /// they are stored here
   final List<Type> objectsWaiting = [];
 
-  /// True while [creationFunction] / async factory for this registration is
-  /// running. Used to fail fast on circular self-resolution (e.g. registering
-  /// `getIt.call` as a factory for `T`, which re-enters `get<T>()`).
+  /// True while the first-creation call of a lazy singleton or cached factory
+  /// is running. Used to fail fast on circular self-resolution (e.g. registering
+  /// `getIt.call` as the factory for `T`, which re-enters `get<T>()`).
+  /// Plain `alwaysNew` factories are deliberately not guarded: recursive
+  /// factories (e.g. building a tree) are legitimate there.
   bool _creationInProgress = false;
 
   @override
@@ -232,33 +234,6 @@ class _ObjectRegistration<T extends Object, P1, P2>
     );
   }
 
-  T _runCreation(T Function() create) {
-    if (_creationInProgress) {
-      _throwCircularSelfResolution();
-    }
-    _creationInProgress = true;
-    try {
-      return create();
-    } finally {
-      _creationInProgress = false;
-    }
-  }
-
-  /// Guards only the synchronous call that starts creation. Cleared when the
-  /// factory returns a [Future], not when that Future completes — so overlapping
-  /// [getAsync] on always-new / cached factories stay valid.
-  Future<T> _runCreationAsync(Future<T> Function() create) {
-    if (_creationInProgress) {
-      _throwCircularSelfResolution();
-    }
-    _creationInProgress = true;
-    try {
-      return create();
-    } finally {
-      _creationInProgress = false;
-    }
-  }
-
   /// returns an instance depending on the type of the registration if [async==false]
   T getObject(dynamic param1, dynamic param2) {
     assert(
@@ -276,11 +251,9 @@ class _ObjectRegistration<T extends Object, P1, P2>
           if (creationFunctionParam != null) {
             // Validate parameters in debug mode
             _validateFactoryParams(param1, param2);
-            return _runCreation(
-              () => creationFunctionParam!(param1 as P1, param2 as P2),
-            );
+            return creationFunctionParam!(param1 as P1, param2 as P2);
           } else {
-            return _runCreation(creationFunction!);
+            return creationFunction!();
           }
         case ObjectRegistrationType.cachedFactory:
           if (weakReferenceInstance?.target != null &&
@@ -288,17 +261,25 @@ class _ObjectRegistration<T extends Object, P1, P2>
               param2 == lastParam2) {
             return weakReferenceInstance!.target!;
           } else {
-            final T newInstance = _runCreation(() {
+            if (_creationInProgress) {
+              _throwCircularSelfResolution();
+            }
+            _creationInProgress = true;
+            T newInstance;
+            try {
               if (creationFunctionParam != null) {
                 // Validate parameters in debug mode BEFORE casting
                 _validateFactoryParams(param1, param2);
                 lastParam1 = param1 as P1?;
                 lastParam2 = param2 as P2?;
-                return creationFunctionParam!(param1 as P1, param2 as P2);
+                newInstance =
+                    creationFunctionParam!(param1 as P1, param2 as P2);
               } else {
-                return creationFunction!();
+                newInstance = creationFunction!();
               }
-            });
+            } finally {
+              _creationInProgress = false;
+            }
             weakReferenceInstance = WeakReference(newInstance);
             return newInstance;
           }
@@ -306,7 +287,11 @@ class _ObjectRegistration<T extends Object, P1, P2>
           return instance!;
         case ObjectRegistrationType.lazy:
           if (instance == null) {
-            _runCreation(() {
+            if (_creationInProgress) {
+              _throwCircularSelfResolution();
+            }
+            _creationInProgress = true;
+            try {
               if (useWeakReference) {
                 if (weakReferenceInstance != null) {
                   /// this means that the instance was already created and disposed
@@ -316,8 +301,9 @@ class _ObjectRegistration<T extends Object, P1, P2>
               } else {
                 _instance = creationFunction!();
               }
-              return instance!;
-            });
+            } finally {
+              _creationInProgress = false;
+            }
             objectsWaiting.clear();
             _readyCompleter.complete();
 
@@ -342,13 +328,11 @@ class _ObjectRegistration<T extends Object, P1, P2>
           return instance!;
       }
     } catch (e, s) {
-      // Only build/print the stack when debug output is enabled. Eagerly
+      // Only build the stack string when debug output is enabled. Eagerly
       // interpolating `$s` can amplify StackOverflowError into native crashes.
       if (_isDebugMode && !GetIt.noDebugOutput) {
-        // ignore: avoid_print
-        print('Error while creating $T');
-        // ignore: avoid_print
-        print('Stack trace:\n $s');
+        _debugOutput('Error while creating $T');
+        _debugOutput('Stack trace:\n $s');
       }
       rethrow;
     }
@@ -379,11 +363,10 @@ class _ObjectRegistration<T extends Object, P1, P2>
           if (asyncCreationFunctionParam != null) {
             // Validate parameters in debug mode
             _validateFactoryParams(param1, param2);
-            return _runCreationAsync(
-              () => asyncCreationFunctionParam!(param1 as P1, param2 as P2),
-            ) as Future<R>;
+            return asyncCreationFunctionParam!(param1 as P1, param2 as P2)
+                as Future<R>;
           } else {
-            return _runCreationAsync(asyncCreationFunction!) as Future<R>;
+            return asyncCreationFunction!() as Future<R>;
           }
         case ObjectRegistrationType.cachedFactory:
           if (weakReferenceInstance?.target != null &&
@@ -391,7 +374,14 @@ class _ObjectRegistration<T extends Object, P1, P2>
               param2 == lastParam2) {
             return Future<R>.value(weakReferenceInstance!.target! as R);
           } else {
-            return _runCreationAsync(() {
+            // The guard only covers the synchronous call that starts creation.
+            // It is cleared when the factory returns its Future, not when that
+            // Future completes, so overlapping getAsync calls stay valid.
+            if (_creationInProgress) {
+              _throwCircularSelfResolution();
+            }
+            _creationInProgress = true;
+            try {
               if (asyncCreationFunctionParam != null) {
                 // Validate parameters in debug mode BEFORE casting
                 _validateFactoryParams(param1, param2);
@@ -403,14 +393,16 @@ class _ObjectRegistration<T extends Object, P1, P2>
                 ).then((value) {
                   weakReferenceInstance = WeakReference(value);
                   return value;
-                });
+                }) as Future<R>;
               } else {
                 return asyncCreationFunction!().then((value) {
                   weakReferenceInstance = WeakReference(value);
                   return value;
-                });
+                }) as Future<R>;
               }
-            }) as Future<R>;
+            } finally {
+              _creationInProgress = false;
+            }
           }
         case ObjectRegistrationType.constant:
           if (instance != null) {
@@ -430,62 +422,62 @@ class _ObjectRegistration<T extends Object, P1, P2>
               return pendingResult! as Future<R>;
             }
 
+            /// Seems this is really the first access to this async Singleton
+            // Guard only the synchronous factory call. Once it has returned,
+            // [pendingResult] is set and re-entrant calls take the early
+            // return above instead of reaching this guard.
             if (_creationInProgress) {
               _throwCircularSelfResolution();
             }
             _creationInProgress = true;
-
-            /// Seems this is really the first access to this async Singleton
+            final Future<T> asyncResult;
             try {
-              final asyncResult = asyncCreationFunction!();
-
-              pendingResult = asyncResult.then((newInstance) {
-                if (!shouldSignalReady) {
-                  /// only complete automatically if the registration wasn't marked with
-                  /// [signalsReady==true]
-                  _readyCompleter.complete();
-                  objectsWaiting.clear();
-                }
-                if (useWeakReference) {
-                  weakReferenceInstance = WeakReference(newInstance);
-                } else {
-                  _instance = newInstance;
-                }
-
-                // Call onCreated callback if provided
-                onCreatedCallback?.call(newInstance);
-
-                /// check if we are shadowing an existing Object
-                final registrationThatWouldbeShadowed =
-                    _getItInstance._findFirstRegistrationByNameAndTypeOrNull(
-                  instanceName,
-                  type: T,
-                  lookInScopeBelow: true,
-                );
-
-                final objectThatWouldbeShadowed =
-                    registrationThatWouldbeShadowed?.instance;
-                if (objectThatWouldbeShadowed != null &&
-                    objectThatWouldbeShadowed is ShadowChangeHandlers) {
-                  objectThatWouldbeShadowed.onGetShadowed(instance!);
-                }
-                return newInstance;
-              }).whenComplete(() {
-                _creationInProgress = false;
-              });
-              return pendingResult! as Future<R>;
-            } catch (_) {
+              asyncResult = asyncCreationFunction!();
+            } finally {
               _creationInProgress = false;
-              rethrow;
             }
+
+            pendingResult = asyncResult.then((newInstance) {
+              if (!shouldSignalReady) {
+                /// only complete automatically if the registration wasn't marked with
+                /// [signalsReady==true]
+                _readyCompleter.complete();
+                objectsWaiting.clear();
+              }
+              if (useWeakReference) {
+                weakReferenceInstance = WeakReference(newInstance);
+              } else {
+                _instance = newInstance;
+              }
+
+              // Call onCreated callback if provided
+              onCreatedCallback?.call(newInstance);
+
+              /// check if we are shadowing an existing Object
+              final registrationThatWouldbeShadowed =
+                  _getItInstance._findFirstRegistrationByNameAndTypeOrNull(
+                instanceName,
+                type: T,
+                lookInScopeBelow: true,
+              );
+
+              final objectThatWouldbeShadowed =
+                  registrationThatWouldbeShadowed?.instance;
+              if (objectThatWouldbeShadowed != null &&
+                  objectThatWouldbeShadowed is ShadowChangeHandlers) {
+                objectThatWouldbeShadowed.onGetShadowed(instance!);
+              }
+              return newInstance;
+            });
+            return pendingResult! as Future<R>;
           }
       }
     } catch (e, s) {
+      // Only build the stack string when debug output is enabled. Eagerly
+      // interpolating `$s` can amplify StackOverflowError into native crashes.
       if (_isDebugMode && !GetIt.noDebugOutput) {
-        // ignore: avoid_print
-        print('Error while creating $T');
-        // ignore: avoid_print
-        print('Stack trace:\n $s');
+        _debugOutput('Error while creating $T');
+        _debugOutput('Stack trace:\n $s');
       }
       rethrow;
     }
