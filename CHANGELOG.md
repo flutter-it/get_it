@@ -1,11 +1,14 @@
 ## [9.3.0] - 2026-09-19
 
+## [9.3.0] - 2026-09-19
+
 * Detect circular self-resolution of lazy singletons (sync and async) and cached factories and throw a descriptive `StateError` instead of a `StackOverflowError`. Thanks to @muhammadkamel (#423).
 * `pubspec.lock` is no longer committed, following the Dart guidelines for library packages.
 * New `acceptsParams` getter on `ObjectRegistration` that tells whether the registered factory takes parameters. Passing `param1`/`param2` to a registration that doesn't accept parameters now fails an assert in debug mode instead of silently ignoring them.
 * New global flag `skipUnregisterIfNotRegistered`: when set to `true`, `unregister` silently ignores a missing registration instead of throwing (default stays `false`). Thanks to @Gorniaky (#420) and @AzazelSensei (#424) for raising this.
 * DevTools extension: filter and sort for the registrations table. Thanks to @yang-lile (#421).
 * DevTools extension rebuilt with Flutter 3.47.1.
+* Fixed analyzer warnings/infos reported by pub.dev and updated dev dependencies.
 
 
 ## [9.2.1] - 2026-02-19

@@ -344,7 +344,7 @@ void main() {
     GetIt.I.reset();
   });
 
-  test('register constant with maybeGet not found', () async {
+  test('register constant with maybeGet not found', () {
     final getIt = GetIt.instance;
     final instance1 = getIt.maybeGet<TestBaseClass>();
     expect(instance1, isNull);
@@ -620,7 +620,7 @@ void main() {
 
   test(
     'reset lazy Singleton when the disposing function is not a future',
-    () async {
+    () {
       final getIt = GetIt.instance;
 
       disposeCounter = 0;
@@ -704,7 +704,7 @@ void main() {
 
   test(
     'reset lazy Singleton when the dispose of the register is not a future',
-    () async {
+    () {
       final getIt = GetIt.instance;
       disposeCounter = 0;
       constructorCounter = 0;
@@ -822,7 +822,7 @@ void main() {
 
   test(
     'unregister by instance when the dispose of the register is not a future',
-    () async {
+    () {
       final getIt = GetIt.instance;
       disposeCounter = 0;
       constructorCounter = 0;
@@ -856,7 +856,7 @@ void main() {
 
   test(
     'unregister by instance when the disposing function is not a future',
-    () async {
+    () {
       final getIt = GetIt.instance;
       disposeCounter = 0;
       constructorCounter = 0;
@@ -949,7 +949,7 @@ void main() {
 
     expect(() => getIt.get<TestClass>(), throwsStateError);
   });
-  test('testing reference counting', () async {
+  test('testing reference counting', () {
     final getIt = GetIt.instance;
     disposeCounter = 0;
     constructorCounter = 0;
@@ -987,7 +987,7 @@ void main() {
 
     expect(() => getIt.get<TestClass>(), throwsStateError);
   });
-  test('testing reference counting - unregister', () async {
+  test('testing reference counting - unregister', () {
     final getIt = GetIt.instance;
     disposeCounter = 0;
     constructorCounter = 0;
@@ -1304,7 +1304,7 @@ void main() {
     });
   });
 
-  test('change registration name with type and name', () async {
+  test('change registration name with type and name', () {
     final getIt = GetIt.instance;
     disposeCounter = 0;
 
@@ -1328,7 +1328,7 @@ void main() {
     expect(getIt<TestClass>(instanceName: 'instanceName2'), isA<TestClass>());
   });
 
-  test('change registration name with type and name existing name', () async {
+  test('change registration name with type and name existing name', () {
     final getIt = GetIt.instance;
 
     getIt.registerSingleton(TestClass(), instanceName: 'instanceName');
@@ -1349,7 +1349,7 @@ void main() {
     );
   });
 
-  test('change registration name of instance', () async {
+  test('change registration name of instance', () {
     final getIt = GetIt.instance;
     disposeCounter = 0;
 

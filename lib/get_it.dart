@@ -1,6 +1,6 @@
 // ignore_for_file: avoid_print
 
-library get_it;
+library;
 
 import 'dart:async';
 import 'dart:collection';
@@ -389,13 +389,17 @@ abstract class GetIt {
   /// than one instance of one type.
   ///
   /// example:
+  /// ```dart
   ///    getIt.registerFactoryParam<TestClassParam,String,int>((s,i)
   ///        => TestClassParam(param1:s, param2: i));
+  /// ```
   ///
   /// if you only use one parameter:
   ///
+  /// ```dart
   ///    getIt.registerFactoryParam<TestClassParam,String,void>((s,_)
   ///        => TestClassParam(param1:s);
+  /// ```
   void registerFactoryParam<T extends Object, P1, P2>(
     FactoryFuncParam<T, P1, P2> factoryFunc, {
     String? instanceName,
@@ -441,13 +445,17 @@ abstract class GetIt {
   /// than one instance of one type.
   ///
   /// example:
+  /// ```dart
   ///    getIt.registerFactoryParam<TestClassParam,String,int>((s,i) async
   ///        => TestClassParam(param1:s, param2: i));
+  /// ```
   ///
   /// if you only use one parameter:
   ///
+  /// ```dart
   ///    getIt.registerFactoryParam<TestClassParam,String,void>((s,_) async
   ///        => TestClassParam(param1:s);
+  /// ```
   void registerFactoryParamAsync<T extends Object, P1, P2>(
     FactoryFuncParamAsync<T, P1?, P2?> factoryFunc, {
     String? instanceName,
