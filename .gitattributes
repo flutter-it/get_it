@@ -1,0 +1,2 @@
+# Prebuilt DevTools extension (compiled Flutter web) - exclude from GitHub language stats
+extension/devtools/build/** linguist-generated=true
